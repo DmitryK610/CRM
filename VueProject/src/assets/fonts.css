@@ -1,0 +1,45 @@
+/* assets/fonts.css */
+
+/* Подключение шрифтов с Google Fonts (пример) */
+
+/* Roboto - пример шрифта, замените на нужные вам шрифты */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* Open Sans - еще один пример шрифта */
+/* @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap'); */
+
+/* Montserrat - третий пример шрифта */
+/* @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap'); */
+
+/*
+  Инструкция по подключению шрифтов с Google Fonts:
+
+  1. Перейдите на сайт Google Fonts: https://fonts.google.com/
+  2. Найдите нужные вам шрифты.
+  3. Выберите необходимые начертания (например, Regular 400, Bold 700).
+  4. В открывшемся окне нажмите на кнопку "View selected families".
+  5. Скопируйте код из секции "Use on the web" -> <link> и вставьте его в <head> вашего HTML-файла (обычно это делается в index.html).
+     ИЛИ
+  6. Скопируйте код из секции "Use on the web" -> @import и вставьте его в этот файл (assets/fonts.css).
+
+  После подключения шрифтов вы сможете использовать их в вашем файле assets/main.css или в стилях компонентов,
+  указывая название шрифта в свойстве font-family. Например:
+
+  body {
+    font-family: 'Roboto', sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Montserrat', sans-serif;
+  }
+*/
+
+/* Дополнительные настройки шрифтов (если необходимо) */
+/*
+body {
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+*/

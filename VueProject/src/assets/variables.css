@@ -1,0 +1,55 @@
+/* assets/variables.css */
+
+:root {
+  /* Цвета */
+  --primary-color: #007bff; /* Основной цвет (синий) */
+  --primary-color-darker: #0056b3;
+  --secondary-color: #6c757d; /* Вторичный цвет (серый) */
+  --success-color: #28a745; /* Цвет успеха (зеленый) */
+  --danger-color: #dc3545; /* Цвет ошибки (красный) */
+  --warning-color: #ffc107; /* Цвет предупреждения (желтый) */
+  --info-color: #17a2b8; /* Информационный цвет (голубой) */
+  --light-color: #f8f9fa; /* Светлый цвет */
+  --dark-color: #343a40; /* Темный цвет */
+  --text-color: #333; /* Основной цвет текста */
+  --text-color-light: #666;
+  --background-color: #f4f4f4; /* Основной фоновый цвет */
+  --border-color: #ccc;
+  --border-color-light: #ddd;
+
+  /* Шрифты */
+  --main-font: sans-serif;
+  --heading-font: sans-serif;
+
+  /* Размеры шрифтов */
+  --font-size-base: 1rem; /* Базовый размер шрифта (16px по умолчанию) */
+  --font-size-sm: 0.875rem; /* Маленький */
+  --font-size-lg: 1.25rem; /* Большой */
+  --h1-font-size: 2.5rem;
+  --h2-font-size: 2rem;
+  --h3-font-size: 1.75rem;
+  --h4-font-size: 1.5rem;
+  --h5-font-size: 1.25rem;
+  --h6-font-size: 1rem;
+
+  /* Отступы и интервалы */
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* Радиусы скругления */
+  --border-radius-sm: 0.2rem;
+  --border-radius-md: 0.4rem;
+  --border-radius-lg: 0.6rem;
+
+  /* Брейкпоинты (если используется адаптивный дизайн) */
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+
+  /* Другие переменные, специфичные для приложения */
+  --header-height: 60px;
+  --footer-height: 50px;
+}
