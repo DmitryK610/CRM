@@ -1,13 +1,15 @@
 # views.py вашего приложения
 from rest_framework import viewsets
-from rest_framework.filters import SearchFilter, OrderingFilter # Добавлен OrderingFilter для сортировки
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.contrib.auth import get_user_model # <-- ДОБАВЛЕНО: Импорт для получения модели User
+User = get_user_model() # <-- ДОБАВЛЕНО: Получение активной модели User
 
 
 from .models import (
-    Supplier, Material, Client, Employee, Calculation,
+    Supplier, Material, Client, Employee, Calculation, # Убедитесь, что Employee импортирован
     Order, OrderItem, Payment, HistoryItem, UserProfile,
     Attachment,
     MaterialPurchase
@@ -31,6 +33,23 @@ class StandardPagination(PageNumberPagination):
     max_page_size = 100
 
 
+# <-- ДОБАВЛЕНО: Вспомогательная функция для получения объекта Employee
+def get_current_employee(request):
+    """
+    Пытается получить объект Employee, связанный с текущим авторизованным пользователем.
+    """
+    if request.user.is_authenticated:
+        try:
+            # Предполагаем, что у вашей модели Employee есть OneToOneField к User
+            # с related_name='employee_profile'
+            employee = request.user.employee_profile
+            return employee
+        except Employee.DoesNotExist:
+            # Если для текущего авторизованного пользователя нет связанного объекта Employee
+            print(f"Предупреждение (get_current_employee): Сотрудник не найден для пользователя {request.user.username} (ID: {request.user.id}).")
+            return None
+    return None # Возвращаем None, если пользователь не авторизован (например, анонимный запрос)
+
 
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
@@ -46,11 +65,23 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
     queryset = Material.objects.select_related('supplier').all()
     serializer_class = MaterialSerializer
-    filter_backends = [SearchFilter, OrderingFilter] # Добавлен OrderingFilter
+    filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['material_name', 'color_code', 'note', 'supplier__company_name']
     ordering_fields = ['material_name', 'cost', 'created_at']
     # permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardPagination
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_create для передачи сотрудника
+    def perform_create(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee # Временно прикрепляем сотрудника к экземпляру
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_update для передачи сотрудника
+    def perform_update(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -60,7 +91,19 @@ class ClientViewSet(viewsets.ModelViewSet):
     search_fields = ['full_name', 'contact_phone', 'email', 'address', 'note']
     ordering_fields = ['full_name', 'created_at', 'updated_at']
     # permission_classes = [permissions.IsAuthenticated]
-    pagination_class = StandardPagination #
+    pagination_class = StandardPagination
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_create для передачи сотрудника
+    def perform_create(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_update для передачи сотрудника
+    def perform_update(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
@@ -90,6 +133,18 @@ class OrderViewSet(viewsets.ModelViewSet):
     pagination_class = OrderPagination
     # permission_classes = [permissions.IsAuthenticated]
 
+    # <-- ДОБАВЛЕНО: Переопределение perform_create для передачи сотрудника
+    def perform_create(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_update для передачи сотрудника
+    def perform_update(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
+
 
 class CalculationViewSet(viewsets.ModelViewSet):
     queryset = Calculation.objects.all()
@@ -104,7 +159,6 @@ class CalculationViewSet(viewsets.ModelViewSet):
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
-
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -147,7 +201,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
 
 
-
 class MaterialPurchaseViewSet(viewsets.ModelViewSet): # ИСПРАВЛЕНО: Имя класса
 
     serializer_class = MaterialPurchaseSerializer
@@ -159,12 +212,25 @@ class MaterialPurchaseViewSet(viewsets.ModelViewSet): # ИСПРАВЛЕНО: И
         'material__material_name', 'material__color_code',
         'order__order_number', 'notes', 'status', 'payment_method',
         'material__supplier__company_name'
-    ] #
+    ]
     ordering_fields = [
         'purchase_order_date', 'created_at', 'total_cost', 'quantity',
         'status', 'received_date', 'material__material_name',
         'order__order_number'
     ]
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_create для передачи сотрудника
+    def perform_create(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
+
+    # <-- ДОБАВЛЕНО: Переопределение perform_update для передачи сотрудника
+    def perform_update(self, serializer):
+        employee = get_current_employee(self.request)
+        instance = serializer.save()
+        instance._current_employee = employee
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -189,12 +255,10 @@ class MaterialPurchaseViewSet(viewsets.ModelViewSet): # ИСПРАВЛЕНО: И
     pagination_class = StandardPagination
 
 
-
 class AttachmentViewSet(viewsets.ModelViewSet):
 
     queryset = Attachment.objects.select_related('order').all()
     serializer_class = AttachmentSerializer
-
 
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = [
@@ -202,7 +266,6 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         'order__order_number', 'order__client__full_name'
     ]
     ordering_fields = ['uploaded_at', 'file_name', 'file_size', 'order__order_number']
-
 
     def get_queryset(self):
         queryset = super().get_queryset()
