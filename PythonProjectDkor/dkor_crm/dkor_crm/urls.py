@@ -14,14 +14,29 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# Главный файл urls.py вашего проекта
+
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.authtoken.views import obtain_auth_token
+
+# --- ДОБАВЬТЕ ЭТИ СТРОКИ ---
+# Убедитесь, что импортируете obtain_auth_token для использования его в CustomObtainAuthToken,
+# и импортируете ваше пользовательское представление.
+from rest_framework.authtoken.views import obtain_auth_token # Возможно, понадобится, если CustomObtainAuthToken наследуется
+# Импортируйте ваше пользовательское представление:
+# Если CustomObtainAuthToken находится в файле crm/views.py:
+from crm.views import CustomObtainAuthToken
+# Если CustomObtainAuthToken находится в файле crm/auth_views.py:
+# from crm.auth_views import CustomObtainAuthToken
+# -------------------------
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('crm.urls')), # Включаем URL-ы из приложения crm под префиксом /api/
-    path('api/login/', obtain_auth_token, name='api_login'), # Эндпоинт для получения токена
-    path('login/', include('django.contrib.auth.urls')), # Для стандартных Django логин/логаут представлений (например, для админки)
-]
 
+    path('api/', include('crm.urls')),
+
+
+    path('api/login/', CustomObtainAuthToken.as_view(), name='api_login'),
+
+    path('login/', include('django.contrib.auth.urls')),
+]

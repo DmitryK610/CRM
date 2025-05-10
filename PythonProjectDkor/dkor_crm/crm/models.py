@@ -4,10 +4,11 @@ from django.db.models import FileField
 import os
 import mimetypes
 from django.core.files.uploadedfile import UploadedFile
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User  # Теперь напрямую используем User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class OrderStatus(models.TextChoices):
     NEW = 'Новый', _('Новый')
@@ -157,7 +158,6 @@ class Order(models.Model):
     advance_payment_amount = models.DecimalField(_("Advance Payment Amount"), max_digits=12, decimal_places=2, blank=True, null=True, db_column='сумма_аванса')
     advance_payment_date = models.DateTimeField(_("Advance Payment Date"), blank=True, null=True, db_column='дата_внесения_аванса')
     installation_date = models.DateTimeField(_("Installation Date"), blank=True, null=True, db_column='дата_установки')
-    employee = models.ForeignKey(Employee, verbose_name=_("Responsible Employee"), on_delete=models.SET_NULL, blank=True, null=True, db_column='id_сотрудника', related_name='managed_orders')
     needs_installation = models.BooleanField(_("Needs Installation"), default=False, db_column='установка')
     needs_delivery = models.BooleanField(_("Needs Delivery"), default=False, db_column='доставка')
     order_number = models.CharField(_("Order Number"), max_length=50, unique=True, blank=True, null=True, db_column='orderNumber')
@@ -169,7 +169,6 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.order_number:
-            # Генерация уникального номера с префиксом "P-"
             last_order = Order.objects.all().order_by('id').only('id').last()
             next_id = last_order.id + 1 if last_order else 1
             self.order_number = str(next_id)
@@ -189,7 +188,12 @@ class OrderItem(models.Model):
     product_name = models.CharField(_("Product Name"), max_length=255)
     quantity = models.DecimalField(_("Quantity"), max_digits=10, decimal_places=3)
     unit_price = models.DecimalField(_("Unit Price"), max_digits=10, decimal_places=2)
-    total_price = models.DecimalField(_("Total Price"), max_digits=12, decimal_places=2)  # Будет вычисляться
+    total_price = models.DecimalField(_("Total Price"), max_digits=12, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        if self.quantity is not None and self.unit_price is not None:
+            self.total_price = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.product_name} (x{self.quantity}) {_('for order')} {self.order.id}"
@@ -207,7 +211,7 @@ class Payment(models.Model):
     status = models.CharField(_("Status"), max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     transaction_id = models.CharField(_("Transaction ID"), max_length=255, blank=True, null=True)
     notes = models.TextField(_("Notes"), blank=True, null=True)
-    created_by = models.ForeignKey(Employee, verbose_name=_("Created By"), on_delete=models.SET_NULL, blank=True, null=True, related_name='created_payments')
+    created_by = models.ForeignKey(User, verbose_name=_("Created By"), on_delete=models.SET_NULL, blank=True, null=True, related_name='created_payments')
     created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
@@ -274,7 +278,7 @@ class MaterialPurchase(models.Model):
     updated_at = models.DateTimeField(_("Дата обновления записи"), auto_now=True)
 
     def __str__(self):
-        material_name = self.material.material_name if self.material else _("Материал не указан")
+        material_name = self.material.material_name if self.material else "Материал не указан"
         return f"{_('Закупка')} {material_name} ({self.quantity}) {_('от')} {self.purchase_order_date}"
 
     class Meta:
@@ -285,21 +289,28 @@ class MaterialPurchase(models.Model):
 
 class HistoryItem(models.Model):
     action_description = models.TextField(_("Action Description"), db_column='описаниеДействия')
-    employee = models.ForeignKey(Employee, verbose_name=_("Employee"), on_delete=models.SET_NULL, blank=True, null=True, db_column='idСотрудник', related_name='history_actions')
+    user = models.ForeignKey(
+        User,
+        verbose_name=_("User"),
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        db_column='idUser',
+        related_name='history_actions'
+    )
     action_timestamp = models.DateTimeField(_("Action Timestamp"), auto_now_add=True, db_column='датаИВремяИзменения')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_object = GenericForeignKey('content_type', 'object_id')  # Это "виртуальное" поле для удобства
+    content_object = GenericForeignKey('content_type', 'object_id')
 
     def __str__(self):
-        employee_name = self.employee.full_name if self.employee else _('System')
-        return f"{self.action_timestamp}: {employee_name} - {self.action_description[:50]}..."
+        username = self.user.username if self.user else _('System')
+        return f"{self.action_timestamp}: {username} - {self.action_description[:50]}..."
 
     class Meta:
         verbose_name = _("Запись истории")
         verbose_name_plural = _("Записи истории")
         ordering = ['-action_timestamp']
-
 
 class UserProfile(models.Model):
     full_name = models.CharField(_("Full Name"), max_length=255, db_column='ФИО')
