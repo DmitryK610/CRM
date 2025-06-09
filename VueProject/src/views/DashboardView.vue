@@ -20,7 +20,7 @@
                   <th class="col-id">№</th>
                   <th class="col-client">Клиент</th>
                   <th class="col-order-date">Дата заказа</th>
-                  <th class="col-deadline">Срок</th>
+                  <th class="col-deadline">Дата установки</th>
                   <th class="col-amount">Сумма</th>
                   <th class="col-status">Статус</th>
                   <th class="col-actions">Действия</th>

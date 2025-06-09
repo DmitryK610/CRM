@@ -4,7 +4,6 @@ from django.db.models import FileField
 import os
 import mimetypes
 from django.core.files.uploadedfile import UploadedFile
-from django.contrib.auth.models import User  # Теперь напрямую используем User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
@@ -153,6 +152,17 @@ class Order(models.Model):
     calculation = models.ForeignKey(Calculation, verbose_name=_("Calculation"), on_delete=models.SET_NULL, blank=True, null=True, db_column='id_расчета', related_name='orders')
     total_amount = models.DecimalField(_("Total Amount"), max_digits=12, decimal_places=2, db_column='сумма_заказа')
     material = models.ForeignKey(Material, verbose_name=_("Material"), on_delete=models.PROTECT, db_column='id_материал', related_name='orders')
+
+    employee = models.ForeignKey(
+        Employee,
+        verbose_name=_("Employee"),
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        db_column='id_сотрудника',
+        related_name='assigned_orders'
+    )
+
     material_quantity = models.DecimalField(_("Material Quantity"), max_digits=10, decimal_places=3, default=0.0, db_column='количество_материала')
     status = models.CharField(_("Status"), max_length=50, choices=OrderStatus.choices, default=OrderStatus.NEW, db_column='статус_заказа')
     advance_payment_amount = models.DecimalField(_("Advance Payment Amount"), max_digits=12, decimal_places=2, blank=True, null=True, db_column='сумма_аванса')
@@ -364,5 +374,3 @@ class Attachment(models.Model):
             if storage.exists(path):
                 storage.delete(path)
         super().delete(*args, **kwargs)
-
-

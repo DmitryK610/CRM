@@ -54,7 +54,7 @@
         </div>
 
         <div class="detail-line">
-          <strong>Дата установки (Срок):</strong>
+          <strong>Дата установки:</strong>
           <span>{{ order.installation_date ? formatDate(order.installation_date) : 'Не указана' }}</span>
         </div>
 
