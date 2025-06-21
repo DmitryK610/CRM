@@ -1,5 +1,5 @@
 export interface User {
   id: number
-  ФИО: string
+  full_name: string
   email?: string
 }

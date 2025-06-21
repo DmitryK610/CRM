@@ -5,11 +5,10 @@
       <nav>
         <router-link to="/privacy" class="footer-link">Политика конфиденциальности</router-link>
         <router-link to="/terms" class="footer-link">Условия использования</router-link>
-        </nav>
+      </nav>
     </div>
   </footer>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 

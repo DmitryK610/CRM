@@ -15,13 +15,21 @@
         <div class="detail-line">
           <strong>Клиент:</strong>
           <span>
-            <span v-if="order.client_info">
-              {{ order.client_info.full_name }} (тел: {{ order.client_info.contact_phone }})
-            </span>
+            <span v-if="order.client_info">{{ order.client_info.full_name }}</span>
             <span v-else-if="order.client">Клиент ID: {{ order.client }} (данные не загружены)</span>
             <span v-else>Не указан</span>
           </span>
         </div>
+        <div class="detail-line">
+          <strong>Телефон:</strong>
+          <span v-if="order.client_info.contact_phone"> {{ order.client_info.contact_phone }}</span>
+
+
+        </div>
+
+
+
+
 
         <div class="detail-line">
           <strong>Основной материал:</strong>
