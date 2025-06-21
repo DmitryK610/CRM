@@ -1,14 +1,11 @@
-# views.py вашего приложения
 
-# --- Импорты ---
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
-from django.db.models.functions import Lower
+
 from django.contrib.auth import get_user_model
 User = get_user_model()
-
+from django.utils import timezone
 # Импорты для авторизации и HistoryItem
 from rest_framework.authtoken.views import ObtainAuthToken # Импортируем базовый класс
 from rest_framework.authtoken.models import Token # Для работы с токенами
@@ -47,59 +44,60 @@ def get_current_user(request):
         return request.user
     return None
 
-# --- Пользовательское представление для авторизации API ---
 class CustomObtainAuthToken(ObtainAuthToken):
     """
-    Представление для получения токена авторизации с добавлением записи в HistoryItem.
+    Представление для получения токена авторизации с добавлением записи в HistoryItem
+    и возвратом данных UserProfile.
     """
     def post(self, request, *args, **kwargs):
-        print("DEBUG: Метод CustomObtainAuthToken.post() вызван.") # Отладочный print
-
-        # Этот шаг обрабатывает валидацию учетных данных и аутентификацию
         serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True) # Если валидация не пройдена, будет выброшено исключение
 
-        try:
-            serializer.is_valid(raise_exception=True)
-            print("DEBUG: Сериализатор валиден.") # Отладочный print
-
-        except Exception as e:
-            print(f"DEBUG: Ошибка валидации сериализатора: {e}") # Отладочный print
-            # Возвращаем стандартный ответ DRF при ошибке валидации
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-        user = serializer.validated_data['user'] # Получаем объект пользователя
-        print(f"DEBUG: Пользователь из валидатора: {user.username}") # Отладочный print
-
-        # --- Логика создания HistoryItem при успешной авторизации ---
-        # Эта логика будет выполняться ТОЛЬКО при успешной аутентификации (после is_valid)
-        action_description = f"Пользователь '{user.username}' успешно авторизовался через API."
-        print(f"[LOGIN VIEW] Авторизация пользователя {user.username} успешна. Создаем запись истории.") # Отладочный print из представления
-
-        try:
-            # Получаем ContentType для модели User
-            user_content_type = ContentType.objects.get_for_model(User) # Используем класс User напрямую
-
-            # Создаем запись HistoryItem, привязывая ее к объекту User
-            history_item = HistoryItem.objects.create(
-                action_description=action_description,
-                user=user, # <-- Здесь мы привязываем к полю user
-                object_id=user.pk, # Привязываем к ID пользователя
-                content_type=user_content_type, # Привязываем к типу контента User
-            )
-            print(f"[LOGIN VIEW] HistoryItem запись об авторизации для пользователя {user.username} (ID: {history_item.id}) создана успешно.")
-        except Exception as e:
-            print(f"[LOGIN VIEW] Ошибка при создании HistoryItem об авторизации для пользователя {user.username}: {e}")
-        # --- Конец логики создания HistoryItem ---
-
-
-        # Оригинальная логика ObtainAuthToken для создания/получения токена
-        # Создаем или получаем токен для пользователя
+        user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
 
-        # Возвращаем стандартный ответ ObtainAuthToken с токеном
-        return Response({'token': token.key})
+        user_profile_data = None
+        try:
+            user_profile = user.profile
+            user_profile_data = UserProfileSerializer(user_profile).data
+        except UserProfile.DoesNotExist:
+            # Fallback: Если профиль не найден (хотя должен быть после миграций и скрипта)
+            user_profile_data = {
+                'id': user.id,
+                'ФИО': user.username,
+                'email': user.email
+            }
+        except Exception:
+            # Общий обработчик ошибок при получении профиля,
+            # возвращаем базовые данные пользователя.
+            user_profile_data = {
+                'id': user.id,
+                'ФИО': user.username,
+                'email': user.email
+            }
 
+        # Логика создания HistoryItem об авторизации
+        action_description = f"Пользователь '{user.username}' успешно авторизовался через API."
+        try:
+            user_content_type = ContentType.objects.get_for_model(User)
+            HistoryItem.objects.create(
+                action_description=action_description,
+                user=user,
+                object_id=user.pk,
+                content_type=user_content_type,
+                action_timestamp=timezone.now()
+            )
+        except Exception:
+            # Если запись истории не удалась, просто логируем ошибку (или игнорируем),
+            # но не прерываем процесс авторизации.
+            pass # Можно добавить logging.error() здесь, если нужен детальный лог ошибки
+
+        response_data = {
+            'token': token.key,
+            'user': user_profile_data,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # --- ViewSets ---
 

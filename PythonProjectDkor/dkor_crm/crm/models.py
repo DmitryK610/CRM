@@ -323,11 +323,16 @@ class HistoryItem(models.Model):
         ordering = ['-action_timestamp']
 
 class UserProfile(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,  # Если пользователь удаляется, удаляется и его профиль
+        related_name='profile',  # Используем related_name 'profile' для доступа к профилю через user.profile
+        verbose_name=_("Django User"),
+        null = True,  # <-- Добавьте это временно
+        blank = True,  # <-- Добавьте это временно
+    )
     full_name = models.CharField(_("Full Name"), max_length=255, db_column='ФИО')
     email = models.EmailField(_("Email"), unique=True, blank=True, null=True)
-
-    def __str__(self):
-        return self.full_name
 
     class Meta:
         verbose_name = _("Пользовательский профиль")

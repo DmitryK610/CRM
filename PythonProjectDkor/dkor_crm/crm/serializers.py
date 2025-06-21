@@ -64,9 +64,17 @@ class CalculationSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    # Явно переопределяем поле 'full_name' как 'ФИО' для JSON-вывода
+    # SerializerMethodField - это один из способов, но проще использовать source
+    ФИО = serializers.CharField(source='full_name') # <-- Добавляем это поле
+
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        # Указываем, какие поля сериализовать.
+        # Теперь включаем наше новое поле 'ФИО' и исключаем 'full_name'
+        fields = ['id', 'ФИО', 'email'] # <-- Здесь указываем 'ФИО'
+        # Если вы хотите, чтобы email был обязательным в API, уберите email?: string на фронте
+        # и сделайте его required=True здесь, если нужно.
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
