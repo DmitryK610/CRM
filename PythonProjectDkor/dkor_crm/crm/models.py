@@ -1,3 +1,5 @@
+from datetime import timezone
+from django.utils.timezone import now
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db.models import FileField
@@ -76,6 +78,7 @@ class Material(models.Model):
     color_code = models.CharField(_("Color Code"), max_length=100, db_column='артикулЦвета')
     supplier = models.ForeignKey(Supplier, verbose_name=_("Supplier"), on_delete=models.PROTECT, related_name='materials')
     cost = models.DecimalField(_("Cost per Unit"), max_digits=10, decimal_places=2, db_column='стоимостьЗаЕдиницу')
+    cost_per_sqm = models.DecimalField(_("Cost per m²"), max_digits=10, decimal_places=2, db_column='стоимостьЗаМ2')
     note = models.TextField(_("Description"), blank=True, null=True, db_column='описание')
     created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
     image_url = models.URLField(_("Image URL"), max_length=500, blank=True, null=True)
@@ -129,22 +132,167 @@ class Employee(models.Model):
 
 
 class Calculation(models.Model):
-    name = models.CharField(_("Name"), max_length=255, blank=True, null=True)
-    title = models.CharField(_("Title"), max_length=255, blank=True, null=True)
-    description = models.TextField(_("Description"), blank=True, null=True)
-    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
-    updated_at = models.DateTimeField(_("Updated At"), auto_now=True, blank=True, null=True)
-    value = models.DecimalField(_("Result Value"), max_digits=15, decimal_places=5, blank=True, null=True)
-    unit = models.CharField(_("Unit"), max_length=50, blank=True, null=True)
-    result_text = models.TextField(_("Result Text/Message"), blank=True, null=True)
-    error_message = models.TextField(_("Error Message"), blank=True, null=True)
+    """
+    Stores all input parameters for a cost calculation and its final results.
+    This model is based on the frontend's CalculationForm and CalculationResult.
+    """
+
+    class EdgeType(models.TextChoices):
+        RADIUS = 'radius', _('Радиусная')
+        FIGURED = 'figured', _('Фигурная')
+
+    class DrainageType(models.TextChoices):
+        OVERLAY = 'overlay', _('Накладной')
+        INTEGRATED = 'integrated', _('Интегрированный')
+
+    class DeliveryType(models.TextChoices):
+        CITY = 'city', _('В городе')
+        OUTSIDE_CITY = 'outside_city', _('За городом')
+
+    # === RELATIONSHIPS ===
+    created_by = models.ForeignKey(
+        User,
+        verbose_name=_("Кем создан"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calculations'
+    )
+    client = models.ForeignKey(
+        'Client',
+        verbose_name=_("Клиент"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calculations'
+    )
+
+    # === INPUT FIELDS (from CalculationForm) ===
+    material = models.ForeignKey(
+        'Material',
+        verbose_name=_("Материал (Камень)"),
+        on_delete=models.PROTECT,
+        related_name='calculations',
+        default=1
+    )
+    product_area = models.DecimalField(
+        _("Площадь изделия (м.кв.)"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.0
+    )
+    measurement_required = models.BooleanField(
+        _("Требуется замер"),
+        default=False
+    )
+    surface_bonding = models.DecimalField(
+        _("Склейка поверхностей (м.п.)"),
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    edge_type = models.CharField(
+        _("Тип кромки"),
+        max_length=10,
+        choices=EdgeType.choices,
+        default=EdgeType.RADIUS
+    )
+    edge_length = models.DecimalField(
+        _("Длина кромки (м.п.)"),
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    drainage_type = models.CharField(
+        _("Тип водоотбойника"),
+        max_length=10,
+        choices=DrainageType.choices,
+        default=DrainageType.OVERLAY
+    )
+    drainage_length = models.DecimalField(
+        _("Длина водоотбойника (м.п.)"),
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    front_bend = models.DecimalField(
+        _("Подгиб (м.п.)"),
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    ventilation_holes = models.PositiveIntegerField(
+        _("Вентиляционные отверстия (шт.)"),
+        default=0
+    )
+    cooktop_cutouts = models.PositiveIntegerField(
+        _("Выпил под варочную панель (шт.)"),
+        default=0
+    )
+    overlay_sink_cutouts = models.PositiveIntegerField(
+        _("Выпил под накладную мойку (шт.)"),
+        default=0
+    )
+    undermount_sink_installations = models.PositiveIntegerField(
+        _("Вклейка мойки подстольного монтажа (шт.)"),
+        default=0
+    )
+    on_site_joining = models.PositiveIntegerField(
+        _("Стыковка на объекте (шт.)"),
+        default=0
+    )
+    delivery_type = models.CharField(
+        _("Доставка"),
+        max_length=20,
+        choices=DeliveryType.choices,
+        default=DeliveryType.CITY
+    )
+    radius_10_to_300 = models.PositiveIntegerField(
+        _("Радиус 10-300мм (шт.)"),
+        default=0
+    )
+    radius_300_to_1000 = models.PositiveIntegerField(
+        _("Радиус 300-1000мм (шт.)"),
+        default=0
+    )
+    vertical_radius = models.PositiveIntegerField(
+        _("Вертикальный радиус (шт.)"),
+        default=0
+    )
+    two_plane_product = models.PositiveIntegerField(
+        _("Изделие в 2х плоскостях (шт.)"),
+        default=0
+    )
+
+    # === RESULT FIELDS (from CalculationResult) ===
+    total_cost = models.DecimalField(
+        _("Итоговая стоимость"),
+        max_digits=12,
+        decimal_places=2,
+        default=0.0
+    )
+    breakdown = models.JSONField(
+        _("Детализация расчета"),
+        default=dict
+    )
+
+    # === METADATA ===
+    created_at = models.DateTimeField(
+        _("Дата создания"),
+        auto_now_add=True
+    )
+    updated_at = models.DateTimeField(
+        _("Дата обновления"),
+        default=now
+    )
 
     def __str__(self):
-        return self.title or self.name or f"Calculation {self.id}"
+        return f"Расчет №{self.id} от {self.created_at.strftime('%Y-%m-%d')} на сумму {self.total_cost} руб."
 
     class Meta:
-        verbose_name = _("Расчет")
-        verbose_name_plural = _("Расчеты")
+        verbose_name = _("Калькуляция")
+        verbose_name_plural = _("Калькуляции")
+        ordering = ['-created_at']
 
 
 class Order(models.Model):

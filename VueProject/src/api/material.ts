@@ -1,15 +1,50 @@
 // src/api/material.ts
 
-import { api } from '@/utils/api';
+import { api } from '@/utils/api'
+import type { Material } from '@/types/material'
 
-const MATERIALS_ENDPOINT = '/api/materials/'; // Замените на фактический эндпоинт вашего API
+const MATERIALS_ENDPOINT = '/api/materials/'
+
+export interface MaterialCreatePayload {
+  material_name: string
+  color_code: string
+  note: string | null
+  cost: number
+  cost_per_sqm: number
+  supplier: number
+}
+
+export interface MaterialUpdatePayload {
+  material_name?: string
+  color_code?: string
+  note?: string | null
+  cost?: number
+  cost_per_sqm?: number
+  supplier?: number
+}
 
 /**
  * Получает список всех материалов.
  * @returns Промис с массивом материалов.
  */
-export async function getMaterials<T>(): Promise<T> {
-  return api.get<T>(MATERIALS_ENDPOINT);
+export async function getMaterials(): Promise<Material[]> {
+  try {
+    const result = await api.get<{ results: Material[] } | Material[]>(MATERIALS_ENDPOINT)
+
+    // Проверяем, пагинированный ли ответ (с полем results) или прямой массив
+    if (result && typeof result === 'object' && 'results' in result) {
+      // Пагинированный ответ Django
+      return Array.isArray(result.results) ? result.results : []
+    } else if (Array.isArray(result)) {
+      // Прямой массив
+      return result
+    } else {
+      return []
+    }
+  } catch {
+    // В случае ошибки возвращаем пустой массив
+    return []
+  }
 }
 
 /**
@@ -17,8 +52,12 @@ export async function getMaterials<T>(): Promise<T> {
  * @param id Идентификатор материала.
  * @returns Промис с информацией о материале.
  */
-export async function getMaterialById<T>(id: number): Promise<T> {
-  return api.get<T>(`${MATERIALS_ENDPOINT}${id}/`);
+export async function getMaterialById(id: number): Promise<Material> {
+  const result = await api.get<Material>(`${MATERIALS_ENDPOINT}${id}/`)
+  if (!result) {
+    throw new Error('Материал не найден')
+  }
+  return result
 }
 
 /**
@@ -26,8 +65,13 @@ export async function getMaterialById<T>(id: number): Promise<T> {
  * @param materialData Данные нового материала.
  * @returns Промис с информацией о созданном материале.
  */
-export async function createMaterial<T, R>(materialData: T): Promise<R> {
-  return api.post<T, R>(MATERIALS_ENDPOINT, materialData);
+export async function createMaterial(materialData: MaterialCreatePayload): Promise<Material> {
+  const result = await api.post<MaterialCreatePayload, Material>(MATERIALS_ENDPOINT, materialData)
+
+  if (!result) {
+    throw new Error('Ошибка при создании материала')
+  }
+  return result
 }
 
 /**
@@ -36,8 +80,18 @@ export async function createMaterial<T, R>(materialData: T): Promise<R> {
  * @param materialData Обновленные данные материала.
  * @returns Промис с информацией об обновленном материале.
  */
-export async function updateMaterial<T, R>(id: number, materialData: T): Promise<R> {
-  return api.put<T, R>(`${MATERIALS_ENDPOINT}${id}/`, materialData);
+export async function updateMaterial(
+  id: number,
+  materialData: MaterialUpdatePayload,
+): Promise<Material> {
+  const result = await api.put<MaterialUpdatePayload, Material>(
+    `${MATERIALS_ENDPOINT}${id}/`,
+    materialData,
+  )
+  if (!result) {
+    throw new Error('Ошибка при обновлении материала')
+  }
+  return result
 }
 
 /**
@@ -46,5 +100,5 @@ export async function updateMaterial<T, R>(id: number, materialData: T): Promise
  * @returns Промис без тела ответа (в случае успеха).
  */
 export async function deleteMaterial(id: number): Promise<void> {
-  return api.delete(`${MATERIALS_ENDPOINT}${id}/`);
+  await api.delete(`${MATERIALS_ENDPOINT}${id}/`)
 }

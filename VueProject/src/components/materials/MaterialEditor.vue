@@ -18,15 +18,20 @@
         <textarea id="note" v-model="formData.note"></textarea>
       </div>
       <div class="form-group">
-        <label for="cost">Стоимость ($):</label>
+        <label for="cost">Стоимость материала (₽):</label>
         <input type="number" id="cost" v-model.number="formData.cost" required min="0" step="0.01">
       </div>
 
       <div class="form-group">
+        <label for="cost_per_sqm">Стоимость за м² изделия (₽):</label>
+        <input type="number" id="cost_per_sqm" v-model.number="formData.cost_per_sqm" required min="0" step="0.01">
+      </div>
+
+      <div class="form-group">
         <label for="supplierSelect">Поставщик:</label>
-        <select id="supplierSelect" v-model="formData.supplierId" required
+        <select id="supplierSelect" v-model.number="formData.supplierId" required
           :disabled="!!(supplierStore.isLoading || supplierStore.error || availableSuppliers.length === 0)">
-          <option value="" disabled selected>-- Выберите поставщика --</option>
+          <option :value="null" disabled selected>-- Выберите поставщика --</option>
           <option v-for="supplier in availableSuppliers" :key="supplier.id" :value="supplier.id">
             {{ supplier.company_name }}
           </option>
@@ -75,10 +80,11 @@ const DEFAULT_MATERIAL: Partial<Material> = {
   color_code: '',
   note: '',
   cost: 0,
+  cost_per_sqm: 0,
 };
 const formData = reactive({
   ...DEFAULT_MATERIAL,
-  supplierId: null as number | null,
+  supplierId: undefined as number | undefined,
 });
 
 // Состояние загрузки/ошибок для редактора (при загрузке данных материала)
@@ -112,9 +118,8 @@ const fetchMaterial = async (id: number) => {
     } else {
       editorError.value = `Материал с ID ${id} не найден.`;
     }
-  } catch (err: any) {
-    console.error("Ошибка загрузки материала:", err);
-    editorError.value = err.message || 'Не удалось загрузить данные материала.';
+  } catch (err: unknown) {
+    editorError.value = (err as Error).message || 'Не удалось загрузить данные материала.';
   } finally {
     isLoadingEditor.value = false;
   }
@@ -134,8 +139,8 @@ const handleSubmit = async () => {
 
   try {
     // Проверка обязательных полей перед отправкой
-    if (!formData.material_name || formData.cost === undefined || formData.cost === null || formData.supplierId === undefined || formData.supplierId === null) {
-      saveError.value = "Не заполнены обязательные поля (Название, Стоимость, Поставщик).";
+    if (!formData.material_name || formData.cost === undefined || formData.cost === null || formData.cost_per_sqm === undefined || formData.cost_per_sqm === null || formData.supplierId === undefined) {
+      saveError.value = "Не заполнены обязательные поля (Название, Стоимость материала, Стоимость за м², Поставщик).";
       return;
     }
     if (typeof formData.supplierId !== 'number' || formData.supplierId <= 0) {
@@ -144,40 +149,37 @@ const handleSubmit = async () => {
     }
 
     // Подготовка данных для отправки на бэкенд
-    const materialData: any = {
+    const materialData = {
       material_name: formData.material_name,
-      color_code: formData.color_code,
-      note: formData.note,
+      color_code: formData.color_code || '',
+      note: formData.note || '',
       cost: Number(formData.cost),
-      supplier: String(formData.supplierId),
+      cost_per_sqm: Number(formData.cost_per_sqm),
+      supplier: formData.supplierId,
     };
-
-
-    Object.keys(materialData).forEach(key => {
-      const value = materialData[key];
-      if (value === undefined || (typeof value === 'string' && value.trim() === '') && key !== 'cost') {
-        delete materialData[key];
-      }
-    });
 
     if (materialId.value) {
       // Режим редактирования
-      await materialStore.updateMaterial(materialId.value, materialData); // Предполагается updateMaterial(id, data)
+      await materialStore.updateMaterial(materialId.value, materialData);
     } else {
       // Режим добавления
-      await materialStore.createMaterial(materialData); // Предполагается createMaterial(data)
+      await materialStore.createMaterial(materialData);
     }
 
     // После успешного сохранения, перенаправляем обратно на список
     router.push('/materials');
-  } catch (err: any) {
-    if (err.response?.data?.supplier?.[0]) {
-      saveError.value = `Поставщик: ${err.response.data.supplier[0]}`;
-    } else if (err.response?.data?.detail) {
-      saveError.value = `Ошибка API: ${err.response.data.detail}`;
-    }
-    else {
-      saveError.value = err.message || 'Не удалось сохранить материал.';
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'response' in err) {
+      const apiError = err as { response?: { data?: { supplier?: string[]; detail?: string } } }
+      if (apiError.response?.data?.supplier?.[0]) {
+        saveError.value = `Поставщик: ${apiError.response.data.supplier[0]}`;
+      } else if (apiError.response?.data?.detail) {
+        saveError.value = `Ошибка API: ${apiError.response.data.detail}`;
+      } else {
+        saveError.value = 'Не удалось сохранить материал.';
+      }
+    } else {
+      saveError.value = (err as Error).message || 'Не удалось сохранить материал.';
     }
   } finally {
     isSaving.value = false;

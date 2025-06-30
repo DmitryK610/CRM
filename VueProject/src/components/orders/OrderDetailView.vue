@@ -22,7 +22,8 @@
         </div>
         <div class="detail-line">
           <strong>Телефон:</strong>
-          <span v-if="order.client_info.contact_phone"> {{ order.client_info.contact_phone }}</span>
+          <span v-if="order.client_info && order.client_info.contact_phone"> {{ order.client_info.contact_phone
+          }}</span>
 
 
         </div>
@@ -142,7 +143,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { OrderStatus, AdvancePaymentType, type Order } from '@/types/order';
 
 const route = useRoute();
-const orderStore = useOrderStore();
+const orderStore = useOrderStore(); //
 
 const orderId = computed(() => route.params.id ? Number(route.params.id) : null);
 
@@ -152,11 +153,11 @@ onMounted(async () => {
     await orderStore.fetchOrderById(orderId.value);
   } else {
     console.error("Order ID is missing from route parameters.");
-    orderStore.setError("Не удалось загрузить заказ: отсутствует ID в маршруте.");
+    orderStore.error = "Не удалось загрузить заказ: отсутствует ID в маршруте.";
   }
 });
 
-const order = computed<Order | null>(() => orderStore.selectedOrder);
+const order = computed<Order | null>(() => orderStore.selectedOrder); //
 
 /** Форматирует дату в локализованный вид (ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ). */
 const formatDate = (dateString: string | null | undefined): string => {

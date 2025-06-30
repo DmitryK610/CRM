@@ -7,22 +7,21 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueJsx(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueJsx(), vueDevTools()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  server: { // Добавьте эту секцию
+  server: {
+    port: 5173,
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8000', // Замените на адрес и порт вашего Django-сервера, если он другой
         changeOrigin: true,
-       // rewrite: (path) => path.replace(/^\/api/, ''),
+        // rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

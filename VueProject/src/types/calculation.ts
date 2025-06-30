@@ -1,0 +1,66 @@
+// src/types/calculation.ts
+
+import type { Material } from './material'
+import type { Client } from './client'
+
+export interface CalculationForm {
+  stoneName: string
+  selectedMaterial?: Material
+  productArea: number
+  measurementRequired: boolean
+  surfaceBonding: number
+  edgeType: 'radius' | 'figured'
+  edgeLength: number
+  drainageType: 'overlay' | 'integrated'
+  drainageLength: number
+  frontBend: number
+  ventilationHoles: number
+  cooktopCutouts: number
+  overlaySinkCutouts: number
+  undermountSinkInstallations: number
+  onSiteJoining: number
+  deliveryType: 'city' | 'outside_city'
+  complexityAdditions: {
+    radius10to300: number
+    radius300to1000: number
+    verticalRadius: number
+    twoPlaneProduct: number
+  }
+  selectedClient?: Client
+}
+
+export interface CalculationResult {
+  totalCost: number
+  breakdown: Record<
+    string,
+    { name: string; quantity: number; unitPrice: number; totalPrice: number }
+  >
+  calculationId?: number | string // ID может быть числом или строкой
+  // client_info от бэкенда может быть полным объектом клиента, строкой или null
+  client_info?: Client | string | null
+  stoneName?: string
+  createdAt?: string
+  // Добавьте сюда любые другие поля, которые напрямую возвращает API в объекте результата
+  product_area?: number // Добавлено, если бэкенд возвращает product_area
+  measurement_required?: boolean
+  surface_bonding?: number
+  edge_type?: 'radius' | 'figured'
+  edge_length?: number
+  drainage_type?: 'overlay' | 'integrated'
+  drainage_length?: number
+  front_bend?: number
+  ventilation_holes?: number
+  cooktop_cutouts?: number
+  overlay_sink_cutouts?: number
+  undermount_sink_installations?: number
+  on_site_joining?: number
+  delivery_type?: 'city' | 'outside_city'
+}
+
+export interface CalculationHistory extends Omit<CalculationResult, 'client_info'> {
+  id?: number | string // Для старых записей, где может быть просто 'id'
+  client?: number | Client | null // client может быть ID или полным объектом
+  form?: CalculationForm // Если вы сохраняете всю форму в истории
+  clientNameForDisplay?: string // Добавлено для удобства отображения имени клиента
+  client_info?: Client | string | null | Record<string, unknown> // Расширяем тип для совместимости с разными API
+}

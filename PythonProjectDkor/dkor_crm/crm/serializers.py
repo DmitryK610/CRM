@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from django.utils.timezone import now
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
     Order, OrderItem, Payment, HistoryItem, UserProfile, Attachment,
@@ -36,7 +36,7 @@ class MaterialSerializer(serializers.ModelSerializer):
         model = Material
         fields = [
             'id', 'material_name', 'color_code', 'supplier',
-            'cost', 'note', 'created_at', 'image_url',
+            'cost', 'cost_per_sqm', 'note', 'created_at', 'image_url',  # Добавлено cost_per_sqm
             'supplier_details', 'purchases',
         ]
         read_only_fields = ('id', 'created_at', 'supplier_details', 'purchases')
@@ -57,11 +57,71 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class CalculationSerializer(serializers.ModelSerializer):
+    stoneName = serializers.SlugRelatedField(
+        slug_field='color_code',
+        queryset=Material.objects.all(),
+        source='material'
+    )
+    productArea = serializers.DecimalField(max_digits=10, decimal_places=2, source='product_area')
+    measurementRequired = serializers.BooleanField(source='measurement_required', default=False)
+    surfaceBonding = serializers.DecimalField(max_digits=10, decimal_places=2, source='surface_bonding', default=0)
+    edgeType = serializers.ChoiceField(choices=Calculation.EdgeType.choices, source='edge_type',
+                                       default=Calculation.EdgeType.RADIUS)
+    edgeLength = serializers.DecimalField(max_digits=10, decimal_places=2, source='edge_length', default=0)
+    drainageType = serializers.ChoiceField(choices=Calculation.DrainageType.choices, source='drainage_type',
+                                           default=Calculation.DrainageType.OVERLAY)
+    drainageLength = serializers.DecimalField(max_digits=10, decimal_places=2, source='drainage_length', default=0)
+    frontBend = serializers.DecimalField(max_digits=10, decimal_places=2, source='front_bend', default=0)
+    ventilationHoles = serializers.IntegerField(source='ventilation_holes', default=0)
+    cooktopCutouts = serializers.IntegerField(source='cooktop_cutouts', default=0)
+    overlaySinkCutouts = serializers.IntegerField(source='overlay_sink_cutouts', default=0)
+    undermountSinkInstallations = serializers.IntegerField(source='undermount_sink_installations', default=0)
+    onSiteJoining = serializers.IntegerField(source='on_site_joining', default=0)
+    deliveryType = serializers.ChoiceField(choices=Calculation.DeliveryType.choices, source='delivery_type',
+                                           default=Calculation.DeliveryType.CITY)
+    complexityAdditions = serializers.JSONField(write_only=True)
+    calculationId = serializers.IntegerField(source='id', read_only=True)
+    totalCost = serializers.DecimalField(max_digits=12, decimal_places=2, source='total_cost', read_only=True)
+    breakdown = serializers.JSONField(read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True, format="%Y-%m-%dT%H:%M:%SZ")
+    client_info = ClientSerializer(source='client', read_only=True)
+
     class Meta:
         model = Calculation
-        fields = '__all__'
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        fields = [
+            'calculationId', 'client', 'client_info', 'stoneName', 'productArea', 'measurementRequired',
+            'surfaceBonding', 'edgeType', 'edgeLength', 'drainageType', 'drainageLength',
+            'frontBend', 'ventilationHoles', 'cooktopCutouts', 'overlaySinkCutouts',
+            'undermountSinkInstallations', 'onSiteJoining', 'deliveryType',
+            'complexityAdditions', 'totalCost', 'breakdown', 'createdAt',
+        ]
+        extra_kwargs = {
+            'client': {'required': False, 'allow_null': True}
+        }
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['complexityAdditions'] = {
+            'radius10to300': instance.radius_10_to_300,
+            'radius300to1000': instance.radius_300_to_1000,
+            'verticalRadius': instance.vertical_radius,
+            'twoPlaneProduct': instance.two_plane_product
+        }
+        return data
+
+    def validate(self, data):
+        complexity_data = data.pop('complexityAdditions', {})
+        data['radius_10_to_300'] = complexity_data.get('radius10to300', 0)
+        data['radius_300_to_1000'] = complexity_data.get('radius300to1000', 0)
+        data['vertical_radius'] = complexity_data.get('verticalRadius', 0)
+        data['two_plane_product'] = complexity_data.get('twoPlaneProduct', 0)
+
+        if not data.get('material'):
+            raise serializers.ValidationError({"stoneName": "Это поле обязательно."})
+        if not data.get('product_area') or data.get('product_area') <= 0:
+            raise serializers.ValidationError({"productArea": "Площадь изделия должна быть больше нуля."})
+
+        return data
 
 class UserProfileSerializer(serializers.ModelSerializer):
     # Явно переопределяем поле 'full_name' как 'ФИО' для JSON-вывода

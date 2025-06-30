@@ -172,7 +172,7 @@ const filteredMaterials = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
   if (!query) return [];
 
-  return (materialStore.materials || []).filter(material => {
+  return materialStore.getMaterials.filter(material => {
     return [
       material.id?.toString().includes(query),
       material.material_name?.toLowerCase().includes(query),
@@ -252,7 +252,7 @@ const formatDate = (date: string | Date | null | undefined): string => {
 
 const getMaterialDisplay = (id: number | null | undefined): string => {
   if (!id) return '---';
-  const material = materialStore.materials.find(m => m.id === id);
+  const material = materialStore.getMaterials.find(m => m.id === id);
   return material
     ? `${material.material_name} (${material.color_code || 'Артикул ?'})`
     : `ID: ${id}`;
@@ -266,7 +266,7 @@ const getOrderFullDisplay = (id: number | null | undefined): string => {
   if (!id) return 'Не связано';
   const order = orderStore.orders.find(o => o.id === id);
   return order
-    ? `Заказ №${order.order_number || order.id} от ${formatDate(order.order_date)} (Клиент: ${order.client_name || 'Неизвестно'})`
+    ? `Заказ №${order.order_number || order.id} от ${formatDate(order.order_date)} (Клиент: ${order.client_info?.full_name || 'Неизвестно'})`
     : `Заказ с ID: ${id}`;
 };
 
@@ -492,8 +492,6 @@ h2 {
   background-color: #fff;
   overflow-x: auto;
 }
-
-.material-purchase-table-container {}
 
 .table-wrapper {
   min-width: 800px;

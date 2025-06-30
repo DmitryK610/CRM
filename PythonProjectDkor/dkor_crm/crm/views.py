@@ -2,7 +2,8 @@
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
-
+from .service import CalculationService
+from rest_framework import status
 from django.contrib.auth import get_user_model
 User = get_user_model()
 from django.utils import timezone
@@ -202,13 +203,80 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 
 class CalculationViewSet(viewsets.ModelViewSet):
-    queryset = Calculation.objects.all()
+    """
+    API endpoint for performing calculations and retrieving calculation history.
+    - POST /: Validates input, performs calculation via CalculationService, and saves the record.
+    - GET /: Retrieves the list of past calculations (history).
+    - PUT /: Updates a calculation and records the change in history.
+    """
+    queryset = Calculation.objects.select_related('material', 'client', 'created_by').all()
     serializer_class = CalculationSerializer
     filter_backends = [SearchFilter, OrderingFilter]
-    search_fields = ['name', 'title', 'description', 'result_text']
-    ordering_fields = ['created_at', 'updated_at', 'value', 'title']
+    search_fields = ['id', 'material__material_name', 'client__full_name']
+    ordering_fields = ['created_at', 'updated_at', 'total_cost']
     pagination_class = StandardPagination
 
+    def perform_update(self, serializer):
+        """Saves the updated instance."""
+        serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Overrides the default create action to integrate the CalculationService
+        and explicitly create a history item.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 1. Use the service to get the calculation results (total_cost and breakdown)
+        service = CalculationService(serializer.validated_data)
+        results = service.calculate()
+
+        # 2. Save the complete record to the database.
+        user = get_current_user(request)
+        instance = serializer.save(created_by=user, **results)
+
+        # 3. Create a history item for the new calculation.
+        HistoryItem.objects.create(
+            action_description=f"Создан новый расчет №{instance.id} на сумму {instance.total_cost} руб.",
+            user=user,
+            content_object=instance
+        )
+
+        # 4. Return the structured result to the frontend.
+        output_serializer = self.get_serializer(instance)
+        headers = self.get_success_headers(output_serializer.data)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Overrides the default update action to explicitly create a history item
+        for the change.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        # Save the updated instance
+        self.perform_update(serializer)
+
+        # Refresh instance from DB to get the latest data for history logging
+        instance.refresh_from_db()
+
+        # Create a history item for the update action.
+        user = get_current_user(request)
+        HistoryItem.objects.create(
+            action_description=f"Обновлен расчет №{instance.id} на сумму {instance.total_cost} руб.",
+            user=user,
+            content_object=instance
+        )
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If the instance has been prefetched, that cache is now invalid.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()

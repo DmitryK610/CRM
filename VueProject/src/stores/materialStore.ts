@@ -2,19 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Material } from '@/types/material'
 import * as materialApi from '@/api/material'
-
-interface PaginatedResponse<T> {
-  count: number
-  next: string | null
-  previous: string | null
-  results: T[]
-}
+import type { MaterialCreatePayload, MaterialUpdatePayload } from '@/api/material'
 
 interface MaterialPayload {
   material_name: string
-  color_code?: string | null
-  note?: string | null
+  color_code?: string
+  note?: string
   cost: number
+  cost_per_sqm: number
   supplier: number
 }
 
@@ -22,49 +17,43 @@ export const useMaterialStore = defineStore('material', () => {
   const materials = ref<Material[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const dollarRate = ref(100) // Курс доллара по умолчанию
 
   const getMaterials = computed(() => materials.value)
   const getIsLoading = computed(() => isLoading.value)
   const getError = computed(() => error.value)
 
-  function handleError(err: any, action: string) {
-    const apiErrorMessage =
-      err.response?.data?.detail ||
-      (typeof err.response?.data === 'string'
-        ? err.response.data
-        : JSON.stringify(err.response?.data)) ||
-      err.message ||
-      `Не удалось выполнить действие при ${action}.`
+  function handleError(err: unknown, action: string) {
+    let apiErrorMessage = `Не удалось выполнить действие при ${action}.`
+
+    if (err instanceof Error) {
+      apiErrorMessage = err.message
+    } else if (typeof err === 'object' && err !== null) {
+      const errorObj = err as Record<string, unknown>
+      if (errorObj.response && typeof errorObj.response === 'object') {
+        const response = errorObj.response as Record<string, unknown>
+        if (response.data && typeof response.data === 'object') {
+          const data = response.data as Record<string, unknown>
+          if (data.detail && typeof data.detail === 'string') {
+            apiErrorMessage = data.detail
+          }
+        }
+      }
+    }
+
     error.value = apiErrorMessage
   }
 
-  async function fetchMaterials(searchQuery?: string): Promise<void> {
+  async function fetchMaterials(): Promise<void> {
     isLoading.value = true
     error.value = null
     try {
-      const params: any = {}
-      if (searchQuery) {
-        params.search = searchQuery
-      }
-
-      const fetchedMaterials = await materialApi.getMaterials<
-        Material[] | PaginatedResponse<Material>
-      >()
-
-      if (Array.isArray(fetchedMaterials)) {
-        materials.value = fetchedMaterials
-      } else if (
-        fetchedMaterials &&
-        typeof fetchedMaterials === 'object' &&
-        'results' in fetchedMaterials &&
-        Array.isArray(fetchedMaterials.results)
-      ) {
-        materials.value = fetchedMaterials.results
-      } else {
-        const err = new Error('Неверный формат данных от API материалов.')
-        handleError(err, 'загрузке материалов')
-      }
+      const fetchedMaterials = await materialApi.getMaterials()
+      // Убеждаемся, что получили массив
+      materials.value = Array.isArray(fetchedMaterials) ? fetchedMaterials : []
     } catch (err) {
+      // В случае ошибки устанавливаем пустой массив
+      materials.value = []
       handleError(err, 'загрузке материалов')
     } finally {
       isLoading.value = false
@@ -75,25 +64,16 @@ export const useMaterialStore = defineStore('material', () => {
     isLoading.value = true
     error.value = null
     try {
-      const fetchedMaterial = await materialApi.getMaterialById<Material>(id)
+      const fetchedMaterial = await materialApi.getMaterialById(id)
 
-      if (fetchedMaterial === null || fetchedMaterial === undefined) {
-        const err = new Error(`Материал с ID ${id} не найден.`)
-        handleError(err, `загрузке материала с ID ${id}`)
-        return null
-      }
-
-      if (typeof fetchedMaterial === 'object' && !Array.isArray(fetchedMaterial)) {
+      if (fetchedMaterial) {
         const index = materials.value.findIndex((m) => m.id === fetchedMaterial.id)
         if (index !== -1) {
           materials.value[index] = { ...materials.value[index], ...fetchedMaterial }
         }
         return fetchedMaterial
-      } else {
-        const err = new Error(`Неверный формат данных для материала с ID ${id}.`)
-        handleError(err, `загрузке материала с ID ${id}`)
-        return null
       }
+      return null
     } catch (err) {
       handleError(err, `загрузке материала с ID ${id}`)
       return null
@@ -106,7 +86,24 @@ export const useMaterialStore = defineStore('material', () => {
     isLoading.value = true
     error.value = null
     try {
-      const newMaterial = await materialApi.createMaterial<MaterialPayload, Material>(materialData)
+      const apiData: MaterialCreatePayload = {
+        material_name: materialData.material_name,
+        color_code: materialData.color_code || '',
+        note: materialData.note || null,
+        cost: materialData.cost,
+        cost_per_sqm: materialData.cost_per_sqm,
+        supplier: materialData.supplier,
+      }
+
+      const newMaterial = await materialApi.createMaterial(apiData)
+
+      if (newMaterial) {
+        // Убеждаемся, что materials.value является массивом
+        if (!Array.isArray(materials.value)) {
+          materials.value = []
+        }
+        materials.value.push(newMaterial)
+      }
       return newMaterial
     } catch (err) {
       handleError(err, 'создании материала')
@@ -123,13 +120,37 @@ export const useMaterialStore = defineStore('material', () => {
     isLoading.value = true
     error.value = null
     try {
-      const updatedMaterial = await materialApi.updateMaterial<Partial<MaterialPayload>, Material>(
-        id,
-        materialData,
-      )
-      const index = materials.value.findIndex((material) => material.id === id)
-      if (index !== -1) {
-        materials.value[index] = { ...materials.value[index], ...updatedMaterial }
+      const apiData: MaterialUpdatePayload = {}
+
+      if (materialData.material_name !== undefined) {
+        apiData.material_name = materialData.material_name
+      }
+      if (materialData.color_code !== undefined) {
+        apiData.color_code = materialData.color_code || ''
+      }
+      if (materialData.note !== undefined) {
+        apiData.note = materialData.note || null
+      }
+      if (materialData.cost !== undefined) {
+        apiData.cost = materialData.cost
+      }
+      if (materialData.cost_per_sqm !== undefined) {
+        apiData.cost_per_sqm = materialData.cost_per_sqm
+      }
+      if (materialData.supplier !== undefined) {
+        apiData.supplier = materialData.supplier // Вернули supplier
+      }
+
+      const updatedMaterial = await materialApi.updateMaterial(id, apiData)
+      if (updatedMaterial) {
+        // Убеждаемся, что materials.value является массивом
+        if (!Array.isArray(materials.value)) {
+          materials.value = []
+        }
+        const index = materials.value.findIndex((material) => material.id === id)
+        if (index !== -1) {
+          materials.value[index] = { ...materials.value[index], ...updatedMaterial }
+        }
       }
       return updatedMaterial
     } catch (err) {
@@ -145,6 +166,10 @@ export const useMaterialStore = defineStore('material', () => {
     error.value = null
     try {
       await materialApi.deleteMaterial(id)
+      // Убеждаемся, что materials.value является массивом
+      if (!Array.isArray(materials.value)) {
+        materials.value = []
+      }
       materials.value = materials.value.filter((material) => material.id !== id)
       return true
     } catch (err) {
@@ -163,11 +188,10 @@ export const useMaterialStore = defineStore('material', () => {
     materials,
     isLoading,
     error,
-
+    dollarRate,
     getMaterials,
     getIsLoading,
     getError,
-
     fetchMaterials,
     fetchMaterialById,
     createMaterial,

@@ -9,6 +9,7 @@
         <router-link to="/dashboard" active-class="active">Панель управления</router-link>
         <router-link to="/orders" active-class="active">Заказы</router-link>
         <router-link to="/clients" active-class="active">Клиенты</router-link>
+        <router-link to="/calculations" active-class="active">Расчеты</router-link>
         <router-link to="/suppliers" active-class="active">Поставщики</router-link>
         <router-link to="/employees" active-class="active">Сотрудники</router-link>
         <router-link to="/materials" active-class="active">Материалы</router-link>

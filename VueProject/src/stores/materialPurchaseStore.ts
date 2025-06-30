@@ -108,18 +108,12 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
 
     try {
       // Вызывает API-уровень
-      const updatedPurchase = await materialPurchaseApi.updateMaterialPurchase(id, payload) // <-- ДОБАВЬТЕ ЭТОТ ЛОГ:
+      const updatedPurchase = await materialPurchaseApi.updateMaterialPurchase(id, payload)
 
-      console.log('[MaterialPurchaseStore] API response data after update:', updatedPurchase) // Обновление списка в сторе (используя данные из updatedPurchase)
-
+      // Обновление списка в сторе (используя данные из updatedPurchase)
       const index = procurements.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         procurements.value[index] = updatedPurchase
-        console.log('[MaterialPurchaseStore] Updated item in store list at index:', index)
-      } else {
-        console.warn(
-          `[MaterialPurchaseStore] Updated purchase with ID ${id} not found in store list.`,
-        )
       }
 
       return updatedPurchase

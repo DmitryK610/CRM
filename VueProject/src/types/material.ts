@@ -3,11 +3,13 @@ export interface Material {
 
   material_name: string
 
-  color_code: string
+  color_code: string // Артикул материала
 
-  supplier: string // Идентификатор поставщика (например, "1" или "2")
+  supplier: number // Идентификатор поставщика
 
   cost: number
+
+  cost_per_sqm: number // Стоимость одного квадратного метра изделия
 
   note?: string // Дополнительное поле для описания материала
 

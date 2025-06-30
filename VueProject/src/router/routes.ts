@@ -10,6 +10,7 @@ const OrdersView = () => import('@/views/OrdersView.vue')
 const ClientsView = () => import('@/views/ClientsView.vue')
 const ClientDetailView = () => import('@/views/ClientDetailView.vue')
 const CalculationsView = () => import('@/views/CalculationsView.vue')
+const CalculationFormView = () => import('@/components/calculations/CalculationForm.vue')
 const CalculationDetailView = () => import('@/views/CalculationDetailView.vue')
 const MaterialsView = () => import('@/views/MaterialsView.vue')
 const SuppliersView = () => import('@/views/SuppliersView.vue')
@@ -88,6 +89,17 @@ export const routes: Array<RouteRecordRaw> = [
         component: CalculationsView,
       },
       {
+        path: 'calculations/new',
+        name: 'CalculationForm',
+        component: CalculationFormView,
+        beforeEnter: async () => {
+          // Сбрасываем форму при переходе на создание нового расчета
+          const { useCalculationStore } = await import('@/stores/calculationStore')
+          const calculationStore = useCalculationStore()
+          calculationStore.resetForm()
+        },
+      },
+      {
         path: 'calculations/:id',
         name: 'CalculationDetail',
         component: CalculationDetailView,
@@ -144,13 +156,12 @@ export const routes: Array<RouteRecordRaw> = [
         name: 'Financial',
         component: FinancialView,
       },
+      {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: NotFoundView,
+        meta: { requiresAuth: false },
+      },
     ],
-  },
-
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: NotFoundView,
-    meta: { requiresAuth: false },
   },
 ]
