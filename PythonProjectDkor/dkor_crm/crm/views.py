@@ -223,8 +223,11 @@ class CalculationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """
         Overrides the default create action to integrate the CalculationService
-        and explicitly create a history item.
+        and handle preview_only calculations.
         """
+        # Проверяем флаг preview_only
+        preview_only = request.data.get('preview_only', False)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -232,21 +235,30 @@ class CalculationViewSet(viewsets.ModelViewSet):
         service = CalculationService(serializer.validated_data)
         results = service.calculate()
 
-        # 2. Save the complete record to the database.
-        user = get_current_user(request)
-        instance = serializer.save(created_by=user, **results)
+        if preview_only:
+            # Если это предварительный расчет - возвращаем только результат без сохранения
+            response_data = {
+                'totalCost': results['total_cost'],
+                'breakdown': results['breakdown']
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
 
-        # 3. Create a history item for the new calculation.
-        HistoryItem.objects.create(
-            action_description=f"Создан новый расчет №{instance.id} на сумму {instance.total_cost} руб.",
-            user=user,
-            content_object=instance
-        )
+        else:
+            # 2. Save the complete record to the database (обычная логика сохранения)
+            user = get_current_user(request)
+            instance = serializer.save(created_by=user, **results)
 
-        # 4. Return the structured result to the frontend.
-        output_serializer = self.get_serializer(instance)
-        headers = self.get_success_headers(output_serializer.data)
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            # 3. Create a history item for the new calculation.
+            HistoryItem.objects.create(
+                action_description=f"Создан новый расчет №{instance.id} на сумму {instance.total_cost} руб.",
+                user=user,
+                content_object=instance
+            )
+
+            # 4. Return the structured result to the frontend.
+            output_serializer = self.get_serializer(instance)
+            headers = self.get_success_headers(output_serializer.data)
+            return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         """
@@ -277,6 +289,22 @@ class CalculationViewSet(viewsets.ModelViewSet):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = get_current_user(request)
+
+        # Создание записи в истории перед удалением
+        HistoryItem.objects.create(
+            action_description=f"Удалён расчёт №{instance.id} на сумму {instance.total_cost} руб.",
+            user=user,
+            content_object=instance
+        )
+
+        # Удаление объекта
+        self.perform_destroy(instance)
+
+        return Response({"detail": "Расчёт успешно удалён."}, status=status.HTTP_204_NO_CONTENT)
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()

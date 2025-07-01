@@ -13,7 +13,7 @@
           <table>
             <thead>
               <tr>
-                <th class="col-id">ID</th>
+                <th class="col-id">№</th>
                 <th class="col-name">Имя</th>
                 <th class="col-email">Email</th>
                 <th class="col-phone">Телефон</th>

@@ -14,12 +14,13 @@ interface DjangoPagedResponse<T> {
 }
 
 /**
- * Выполняет расчет на основе предоставленных данных.
+ * Выполняет расчет на основе предоставленных данных БЕЗ сохранения в базу данных.
+ * Отправляет данные на бэкенд для расчета с флагом preview_only=true.
+ * Возвращает только результат расчета для отображения в интерфейсе.
  * @param calculationData Данные для расчета
  * @returns Результат расчета
  */
 export async function calculate(calculationData: CalculationForm): Promise<CalculationResult> {
-  // Создаем минимальную структуру данных для backend
   const backendData = {
     // Информация о клиенте (если выбран)
     client: calculationData.selectedClient?.id || null,
@@ -32,28 +33,33 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
         }
       : null,
 
-    // Основные данные
-    stoneName: calculationData.stoneName,
-    material: calculationData.selectedMaterial?.id,
-    productArea: calculationData.productArea,
-    measurementRequired: calculationData.measurementRequired,
+    // Основные данные - используем формат, который ожидает CalculationSerializer
+    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName, // сериализатор ожидает color_code
+    productArea: calculationData.productArea, // сериализатор ожидает camelCase
+    measurementRequired: calculationData.measurementRequired, // сериализатор ожидает camelCase
 
-    // Дополнительные параметры
-    surfaceBonding: calculationData.surfaceBonding,
-    edgeType: calculationData.edgeType,
-    edgeLength: calculationData.edgeLength,
-    drainageType: calculationData.drainageType,
-    drainageLength: calculationData.drainageLength,
-    frontBend: calculationData.frontBend,
-    ventilationHoles: calculationData.ventilationHoles,
-    cooktopCutouts: calculationData.cooktopCutouts,
-    overlaySinkCutouts: calculationData.overlaySinkCutouts,
-    undermountSinkInstallations: calculationData.undermountSinkInstallations,
-    onSiteJoining: calculationData.onSiteJoining,
-    deliveryType: calculationData.deliveryType,
-    complexityAdditions: calculationData.complexityAdditions,
+    // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
+    surfaceBonding: calculationData.surfaceBonding, // сериализатор ожидает camelCase
+    edgeType: calculationData.edgeType, // сериализатор ожидает camelCase
+    edgeLength: calculationData.edgeLength, // сериализатор ожидает camelCase
+    drainageType: calculationData.drainageType, // сериализатор ожидает camelCase
+    drainageLength: calculationData.drainageLength, // сериализатор ожидает camelCase
+    frontBend: calculationData.frontBend, // сериализатор ожидает camelCase
+    ventilationHoles: calculationData.ventilationHoles, // сериализатор ожидает camelCase
+    cooktopCutouts: calculationData.cooktopCutouts, // сериализатор ожидает camelCase
+    overlaySinkCutouts: calculationData.overlaySinkCutouts, // сериализатор ожидает camelCase
+    undermountSinkInstallations: calculationData.undermountSinkInstallations, // сериализатор ожидает camelCase
+    onSiteJoining: calculationData.onSiteJoining, // сериализатор ожидает camelCase
+    deliveryType: calculationData.deliveryType, // сериализатор ожидает camelCase
+
+    // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
+    complexityAdditions: calculationData.complexityAdditions, // сериализатор обрабатывает это поле
+
+    // Флаг указывающий, что это предварительный расчет без сохранения
+    preview_only: true,
   }
 
+  // Отправляем POST запрос на основной endpoint с флагом preview_only
   const result = await api.post<typeof backendData, CalculationResult>(
     CALCULATION_ENDPOINT,
     backendData,
@@ -67,12 +73,75 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
 }
 
 /**
+ * Сохраняет новый расчет в базу данных.
+ * Эта функция вызывается после того, как расчет был выполнен и его результат получен.
+ * @param calculationData Полные данные расчета, включая результат (totalCost, breakdown).
+ * @returns Сохраненный объект истории расчета (CalculationHistory).
+ */
+export async function saveNewCalculation(
+  calculationData: CalculationForm & { totalCost: number; breakdown: Record<string, unknown> },
+): Promise<CalculationHistory> {
+  const backendData = {
+    // Информация о клиенте (если выбран)
+    client: calculationData.selectedClient?.id || null,
+    client_info: calculationData.selectedClient
+      ? {
+          id: calculationData.selectedClient.id,
+          full_name: calculationData.selectedClient.full_name,
+          contact_phone: calculationData.selectedClient.contact_phone,
+          email: calculationData.selectedClient.email,
+        }
+      : null,
+
+    // Основные данные - используем формат, который ожидает CalculationSerializer
+    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName, // сериализатор ожидает color_code
+    productArea: calculationData.productArea, // сериализатор ожидает camelCase
+    measurementRequired: calculationData.measurementRequired, // сериализатор ожидает camelCase
+
+    // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
+    surfaceBonding: calculationData.surfaceBonding, // сериализатор ожидает camelCase
+    edgeType: calculationData.edgeType, // сериализатор ожидает camelCase
+    edgeLength: calculationData.edgeLength, // сериализатор ожидает camelCase
+    drainageType: calculationData.drainageType, // сериализатор ожидает camelCase
+    drainageLength: calculationData.drainageLength, // сериализатор ожидает camelCase
+    frontBend: calculationData.frontBend, // сериализатор ожидает camelCase
+    ventilationHoles: calculationData.ventilationHoles, // сериализатор ожидает camelCase
+    cooktopCutouts: calculationData.cooktopCutouts, // сериализатор ожидает camelCase
+    overlaySinkCutouts: calculationData.overlaySinkCutouts, // сериализатор ожидает camelCase
+    undermountSinkInstallations: calculationData.undermountSinkInstallations, // сериализатор ожидает camelCase
+    onSiteJoining: calculationData.onSiteJoining, // сериализатор ожидает camelCase
+    deliveryType: calculationData.deliveryType, // сериализатор ожидает camelCase
+
+    // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
+    complexityAdditions: calculationData.complexityAdditions, // сериализатор обрабатывает это поле
+
+    // Результаты расчета не нужно передавать - бэкенд пересчитает их
+    // totalCost: calculationData.totalCost,
+    // breakdown: calculationData.breakdown,
+
+    // НЕ передаем preview_only - расчет сохраняется в базу данных
+  }
+
+  // Отправляем POST запрос на основной endpoint для сохранения
+  const result = await api.post<typeof backendData, CalculationHistory>(
+    CALCULATION_ENDPOINT,
+    backendData,
+  )
+
+  if (!result) {
+    throw new Error('Ошибка при сохранении расчета')
+  }
+
+  return result
+}
+
+/**
  * Получение истории расчетов.
  * @returns Промис с массивом истории расчетов.
  */
 export async function getCalculationHistory(): Promise<CalculationHistory[]> {
   const result = await api.get<DjangoPagedResponse<CalculationHistory> | CalculationHistory[]>(
-    '/api/calculations/',
+    CALCULATION_ENDPOINT,
   )
 
   if (!result) {
@@ -98,7 +167,7 @@ export async function getCalculationHistory(): Promise<CalculationHistory[]> {
  * @returns Промис с информацией о расчете.
  */
 export async function getCalculationById(id: string): Promise<CalculationHistory> {
-  const result = await api.get<CalculationHistory>(`/api/calculations/${id}/`)
+  const result = await api.get<CalculationHistory>(`${CALCULATION_ENDPOINT}${id}/`)
 
   if (!result) {
     throw new Error('Расчет не найден')
@@ -113,5 +182,5 @@ export async function getCalculationById(id: string): Promise<CalculationHistory
  * @returns Промис, который завершается после удаления.
  */
 export async function deleteCalculation(id: string | number): Promise<void> {
-  await api.delete(`/api/calculations/${id}/`)
+  await api.delete(`${CALCULATION_ENDPOINT}${id}/`)
 }

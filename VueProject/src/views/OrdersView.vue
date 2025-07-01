@@ -22,14 +22,14 @@
       <table>
         <thead>
           <tr>
-            <th @click="sortBy('id')" :class="['col-id', getSortClass('id')]">ID ⇅</th>
+            <th @click="sortBy('id')" :class="['col-id', getSortClass('id')]">№</th>
             <th @click="sortBy('order_date')" :class="['col-order-date', getSortClass('order_date')]">Дата создания
-              ⇅</th>
-            <th @click="sortBy('clientName')" :class="['col-client', getSortClass('clientName')]">Клиент ⇅</th>
-            <th @click="sortBy('material_name')" :class="['col-material', getSortClass('material_name')]">Материал ⇅
             </th>
-            <th @click="sortBy('total_amount')" :class="['col-amount', getSortClass('total_amount')]">Сумма ⇅</th>
-            <th @click="sortBy('status')" :class="['col-status', getSortClass('status')]">Статус ⇅</th>
+            <th @click="sortBy('clientName')" :class="['col-client', getSortClass('clientName')]">Клиент</th>
+            <th @click="sortBy('material_name')" :class="['col-material', getSortClass('material_name')]">Материал
+            </th>
+            <th @click="sortBy('total_amount')" :class="['col-amount', getSortClass('total_amount')]">Сумма</th>
+            <th @click="sortBy('status')" :class="['col-status', getSortClass('status')]">Статус</th>
             <th class="col-actions">Действия</th>
           </tr>
         </thead>
@@ -419,7 +419,8 @@ const handleUploadAttachment = async () => {
     await attachmentStore.uploadAttachment(
       currentOrderIdForAttachments.value,
       selectedFile.value,
-      newAttachmentDescription.value || null
+      newAttachmentDescription.value || null,
+      'order'
     );
     selectedFile.value = null;
     newAttachmentDescription.value = '';

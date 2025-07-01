@@ -5,7 +5,8 @@ import type { Attachment } from '@/types/attachment'
 
 export const useAttachmentStore = defineStore('attachmentStore', {
   state: () => ({
-    attachments: new Map<number, Attachment[]>(),
+    orderAttachments: new Map<number, Attachment[]>(),
+    calculationAttachments: new Map<number, Attachment[]>(),
     isLoadingAttachments: false,
     isUploadingAttachment: false,
     isDeletingAttachment: false,
@@ -24,31 +25,60 @@ export const useAttachmentStore = defineStore('attachmentStore', {
         const response = await axios.get<Attachment[]>(`/api/attachments/?order=${orderId}`)
 
         if (Array.isArray(response.data)) {
-          this.attachments.set(orderId, response.data)
+          this.orderAttachments.set(orderId, response.data)
         } else {
           const err = new Error(`Неверный формат данных от API вложений для заказа ${orderId}.`)
           this.attachmentError = err.message
-          this.attachments.set(orderId, [])
+          this.orderAttachments.set(orderId, [])
         }
-      } catch (error: any) {
-        this.attachmentError =
-          error.response?.data?.detail || error.message || 'Не удалось загрузить вложения.'
-        this.attachments.set(orderId, [])
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Не удалось загрузить вложения.'
+        this.attachmentError = errorMessage
+        this.orderAttachments.set(orderId, [])
+      } finally {
+        this.isLoadingAttachments = false
+      }
+    },
+
+    async fetchAttachmentsForCalculation(calculationId: number) {
+      this.isLoadingAttachments = true
+      this.attachmentError = null
+      try {
+        const response = await axios.get<Attachment[]>(
+          `/api/attachments/?calculation=${calculationId}`,
+        )
+
+        if (Array.isArray(response.data)) {
+          this.calculationAttachments.set(calculationId, response.data)
+        } else {
+          const err = new Error(
+            `Неверный формат данных от API вложений для расчета ${calculationId}.`,
+          )
+          this.attachmentError = err.message
+          this.calculationAttachments.set(calculationId, [])
+        }
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Не удалось загрузить вложения.'
+        this.attachmentError = errorMessage
+        this.calculationAttachments.set(calculationId, [])
       } finally {
         this.isLoadingAttachments = false
       }
     },
 
     async uploadAttachment(
-      orderId: number,
+      id: number,
       file: File,
       description?: string | null,
+      type: 'order' | 'calculation' = 'order',
     ): Promise<Attachment | null> {
       this.isUploadingAttachment = true
       this.attachmentError = null
       try {
         const formData = new FormData()
-        formData.append('order', String(orderId))
+        formData.append(type, String(id))
         formData.append('file', file)
         if (description !== undefined && description !== null) {
           formData.append('description', description)
@@ -61,13 +91,14 @@ export const useAttachmentStore = defineStore('attachmentStore', {
         })
 
         const newAttachment: Attachment = response.data
-        const currentAttachments = this.attachments.get(orderId) || []
-        this.attachments.set(orderId, [...currentAttachments, newAttachment])
+        const attachmentMap = type === 'order' ? this.orderAttachments : this.calculationAttachments
+        const currentAttachments = attachmentMap.get(id) || []
+        attachmentMap.set(id, [...currentAttachments, newAttachment])
 
         return newAttachment
-      } catch (error: any) {
-        this.attachmentError =
-          error.response?.data?.detail || error.message || 'Не удалось загрузить файл.'
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Не удалось загрузить файл.'
+        this.attachmentError = errorMessage
         return null
       } finally {
         this.isUploadingAttachment = false
@@ -80,7 +111,16 @@ export const useAttachmentStore = defineStore('attachmentStore', {
       try {
         await axios.delete(`/api/attachments/${attachmentId}/`)
 
-        for (const attachments of this.attachments.values()) {
+        // Удаляем из обеих карт (заказы и расчеты)
+        for (const attachments of this.orderAttachments.values()) {
+          const index = attachments.findIndex((att) => att.id === attachmentId)
+          if (index !== -1) {
+            attachments.splice(index, 1)
+            break
+          }
+        }
+
+        for (const attachments of this.calculationAttachments.values()) {
           const index = attachments.findIndex((att) => att.id === attachmentId)
           if (index !== -1) {
             attachments.splice(index, 1)
@@ -89,9 +129,9 @@ export const useAttachmentStore = defineStore('attachmentStore', {
         }
 
         return true
-      } catch (error: any) {
-        this.attachmentError =
-          error.response?.data?.detail || error.message || 'Не удалось удалить файл.'
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Не удалось удалить файл.'
+        this.attachmentError = errorMessage
         return false
       } finally {
         this.isDeletingAttachment = false
@@ -99,13 +139,20 @@ export const useAttachmentStore = defineStore('attachmentStore', {
     },
 
     clearAttachmentsForOrder(orderId: number) {
-      this.attachments.delete(orderId)
+      this.orderAttachments.delete(orderId)
+    },
+
+    clearAttachmentsForCalculation(calculationId: number) {
+      this.calculationAttachments.delete(calculationId)
     },
   },
 
   getters: {
     getAttachmentsForOrder: (state) => (orderId: number) => {
-      return state.attachments.get(orderId) || []
+      return state.orderAttachments.get(orderId) || []
+    },
+    getAttachmentsForCalculation: (state) => (calculationId: number) => {
+      return state.calculationAttachments.get(calculationId) || []
     },
     getIsLoadingAttachments: (state) => state.isLoadingAttachments,
     getIsUploadingAttachment: (state) => state.isUploadingAttachment,

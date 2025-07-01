@@ -3,6 +3,8 @@
     <h1>Список расчетов</h1>
 
     <div class="controls-panel">
+      <input v-model="searchQuery" type="text" placeholder="Поиск по клиенту, материалу, сумме или дате..."
+        class="search-input" />
       <router-link to="/calculations/new" class="button add-button">
         Добавить новый расчет
       </router-link>
@@ -10,6 +12,11 @@
 
     <div v-if="calculationStore.isLoading" class="status-message loading-message">
       <div class="loader"></div> Загрузка расчетов...
+    </div>
+
+    <div v-else-if="validCalculations.length === 0 && searchQuery.trim()" class="status-message no-results-message">
+      <p>По запросу "{{ searchQuery }}" ничего не найдено.</p>
+      <button @click="searchQuery = ''" class="btn btn-secondary btn-sm">Очистить поиск</button>
     </div>
 
     <div v-else-if="validCalculations.length === 0" class="status-message no-orders-available">
@@ -23,7 +30,7 @@
       <table>
         <thead>
           <tr>
-            <th scope="col" class="col-id">№ расчета</th>
+            <th scope="col" class="col-id">№</th>
             <th scope="col" class="col-client">Клиент</th>
             <th scope="col" class="col-material">Материал</th>
             <th scope="col" class="col-amount">Сумма расчета</th>
@@ -34,7 +41,7 @@
         <tbody>
           <tr v-for="calculation in validCalculations" :key="calculation.id || calculation.calculationId">
             <td class="text-center">
-              #{{ calculation.id || calculation.calculationId }}
+              {{ calculation.id || calculation.calculationId }}
             </td>
             <td>
               {{ getClientName(calculation) }}
@@ -54,6 +61,13 @@
                   class="btn btn-primary btn-sm" title="Просмотр">
                   Просмотр
                 </router-link>
+                <button @click="openAttachmentModal(calculation.id || calculation.calculationId)"
+                  class="btn btn-info btn-sm" title="Вложения">
+                  Вложения ({{
+                    (calculation.id || calculation.calculationId) ?
+                      attachmentStore.getAttachmentsForCalculation(Number(calculation.id ||
+                        calculation.calculationId)).length : 0 }})
+                </button>
                 <button @click="deleteCalculation(calculation.id || calculation.calculationId)"
                   class="btn btn-danger btn-sm" title="Удалить">
                   Удалить
@@ -64,25 +78,134 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Модальное окно для вложений -->
+    <div v-if="isAttachmentModalOpen" class="modal-overlay" @click.self="closeAttachmentModal">
+      <div class="modal-content">
+        <h2>Вложения для расчета #{{ currentCalculationIdForAttachments }}</h2>
+
+        <div v-if="attachmentStore.attachmentError" class="status-message error-message modal-error">
+          ⚠️ Ошибка: {{ attachmentStore.attachmentError }}
+          <button @click="attachmentStore.clearAttachmentError()">Закрыть</button>
+        </div>
+
+        <div v-else-if="attachmentStore.isLoadingAttachments" class="status-message">
+          Загрузка вложений...
+        </div>
+
+        <div class="attachments-list" v-else>
+          <h3>Существующие вложения:</h3>
+          <div v-if="attachmentsForCurrentCalculation.length === 0"
+            class="status-message no-results-message no-results-message-small">
+            Нет вложений для этого расчета.
+          </div>
+          <ul v-else>
+            <li v-for="attachment in attachmentsForCurrentCalculation" :key="attachment.id" class="attachment-item">
+              <a :href="attachment.file" target="_blank" :download="attachment.file_name || 'attachment'">
+                {{ attachment.file_name || 'Файл ID: ' + attachment.id }}
+              </a>
+              <span v-if="attachment.description"> - {{ attachment.description }}</span>
+              <span class="file-info" v-if="attachment.file_size !== undefined && attachment.file_size !== null">
+                ({{ formatFileSize(attachment.file_size) }})
+              </span>
+              <button @click="handleAttachmentDelete(attachment.id!)"
+                class="btn btn-danger btn-sm delete-attachment-button" :disabled="attachmentStore.isDeletingAttachment">
+                Удалить
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <hr class="modal-divider">
+
+        <div class="upload-attachment-form">
+          <h3>Загрузить новое вложение:</h3>
+          <div class="form-group">
+            <label for="attachmentFile">Файл:</label>
+            <input type="file" id="attachmentFile" @change="handleFileSelect" ref="fileInput" required>
+          </div>
+          <div class="form-group">
+            <label for="attachmentDescription">Описание (опционально):</label>
+            <input type="text" id="attachmentDescription" v-model="newAttachmentDescription">
+          </div>
+          <button @click="handleUploadAttachment" class="btn btn-primary"
+            :disabled="!selectedFile || attachmentStore.isUploadingAttachment">
+            Загрузить файл
+          </button>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" @click="closeAttachmentModal" class="btn btn-secondary">Закрыть</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useCalculationStore } from '@/stores/calculationStore';
 import { useClientStore } from '@/stores/clientStore';
+import { useAttachmentStore } from '@/stores/attachmentStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import type { CalculationHistory } from '@/types/calculation';
-import type { Client } from '@/types/client'; // Импортируем тип Client
+import type { Client } from '@/types/client';
 
 const calculationStore = useCalculationStore();
 const clientStore = useClientStore();
+const attachmentStore = useAttachmentStore();
 const notificationStore = useNotificationStore();
+
+// Поисковый запрос
+const searchQuery = ref('');
+
+// Модальное окно для вложений
+const isAttachmentModalOpen = ref(false);
+const currentCalculationIdForAttachments = ref<number | null>(null);
+const selectedFile = ref<File | null>(null);
+const newAttachmentDescription = ref('');
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const calculations = computed(() => calculationStore.history);
 
+const attachmentsForCurrentCalculation = computed(() => {
+  if (currentCalculationIdForAttachments.value === null) {
+    return [];
+  }
+  return attachmentStore.getAttachmentsForCalculation(currentCalculationIdForAttachments.value);
+});
+
 const validCalculations = computed(() => {
   const filtered = calculations.value.filter(calculation => calculation && (calculation.id || calculation.calculationId));
+
+  // Если есть поисковый запрос, фильтруем результаты
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim();
+    return filtered.filter(calculation => {
+      // Поиск по имени клиента
+      const clientName = getClientName(calculation).toLowerCase();
+      if (clientName.includes(query)) return true;
+
+      // Поиск по материалу
+      const materialInfo = getMaterialInfo(calculation).toLowerCase();
+      if (materialInfo.includes(query)) return true;
+
+      // Поиск по сумме
+      const totalCost = getTotalCost(calculation).toString();
+      if (totalCost.includes(query)) return true;
+
+      // Поиск по дате
+      const dateString = formatDate(calculation.createdAt).toLowerCase();
+      if (dateString.includes(query)) return true;
+
+      // Поиск по ID расчета
+      const calculationId = (calculation.id || calculation.calculationId)?.toString();
+      if (calculationId?.includes(query)) return true;
+
+      return false;
+    });
+  }
+
   return filtered;
 });
 
@@ -178,19 +301,132 @@ const getMaterialInfo = (calculation: CalculationHistory): string => {
 const deleteCalculation = async (calculationId: string | number | undefined) => {
   if (!calculationId) return;
 
-  if (confirm('Вы уверены, что хотите удалить этот расчет?')) {
+  // Найдем расчет в локальном списке для дополнительной информации
+  const calculationToDelete = validCalculations.value.find(
+    calc => (calc.id || calc.calculationId) === calculationId
+  );
+
+  if (!calculationToDelete) {
+    notificationStore.showNotification('Расчет не найден в списке', 'error');
+    return;
+  }
+
+  const clientName = getClientName(calculationToDelete);
+  const confirmMessage = `Вы уверены, что хотите удалить расчет №${calculationId}${clientName !== 'Анонимный расчет' ? ` для клиента ${clientName}` : ''}?`;
+
+  if (confirm(confirmMessage)) {
     try {
       await calculationStore.deleteCalculation(calculationId);
-      notificationStore.showNotification('Расчет удален', 'success');
-    } catch (error) {
+      notificationStore.showNotification('Расчет успешно удален', 'success');
+    } catch (error: unknown) {
       console.error('Error deleting calculation:', error);
-      notificationStore.showNotification('Ошибка при удалении расчета', 'error');
+
+      // Обработка разных типов ошибок
+      const errorMessage = (error as Error).message || 'Неизвестная ошибка';
+
+      if (errorMessage.includes('404')) {
+        // Если расчет не найден на сервере, удаляем его из локального списка
+        calculationStore.history = calculationStore.history.filter(
+          calc => (calc.id || calc.calculationId) !== calculationId
+        );
+        notificationStore.showNotification(
+          'Расчет не найден на сервере, но удален из локального списка',
+          'warning'
+        );
+      } else if (errorMessage.includes('403')) {
+        notificationStore.showNotification('Нет прав для удаления этого расчета', 'error');
+      } else if (errorMessage.includes('500')) {
+        notificationStore.showNotification('Ошибка сервера при удалении расчета', 'error');
+      } else {
+        notificationStore.showNotification(
+          `Ошибка при удалении расчета: ${errorMessage}`,
+          'error'
+        );
+      }
     }
+  }
+};
+
+// Функции для работы с вложениями
+const formatFileSize = (bytes: number | null | undefined, decimalPoint = 2) => {
+  if (bytes == null || bytes === 0) return '0 Bytes';
+  const k = 1000;
+  const dm = decimalPoint < 0 ? 0 : decimalPoint;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
+
+const openAttachmentModal = (calculationId: string | number | undefined) => {
+  if (!calculationId) return;
+  const numericId = typeof calculationId === 'string' ? parseInt(calculationId) : calculationId;
+  currentCalculationIdForAttachments.value = numericId;
+  isAttachmentModalOpen.value = true;
+  attachmentStore.clearAttachmentError();
+  attachmentStore.fetchAttachmentsForCalculation(numericId);
+};
+
+const closeAttachmentModal = () => {
+  isAttachmentModalOpen.value = false;
+  currentCalculationIdForAttachments.value = null;
+  selectedFile.value = null;
+  newAttachmentDescription.value = '';
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+  attachmentStore.clearAttachmentError();
+};
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    selectedFile.value = target.files[0];
+  } else {
+    selectedFile.value = null;
+  }
+};
+
+const handleUploadAttachment = async () => {
+  if (!selectedFile.value || currentCalculationIdForAttachments.value === null) {
+    attachmentStore.attachmentError = 'Выберите файл для загрузки.';
+    return;
+  }
+  attachmentStore.clearAttachmentError();
+  try {
+    await attachmentStore.uploadAttachment(
+      currentCalculationIdForAttachments.value,
+      selectedFile.value,
+      newAttachmentDescription.value || null,
+      'calculation'
+    );
+    selectedFile.value = null;
+    newAttachmentDescription.value = '';
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
+  } catch {
+    // Ошибка уже обрабатывается в store
+  }
+};
+
+const handleAttachmentDelete = async (attachmentId: number) => {
+  if (!confirm('Вы уверены, что хотите удалить это вложение?')) {
+    return;
+  }
+  attachmentStore.attachmentError = null;
+  try {
+    await attachmentStore.deleteAttachment(attachmentId);
+  } catch {
+    // Ошибка уже обрабатывается в store
   }
 };
 
 onMounted(async () => {
   try {
+    // Очищаем поиск при загрузке страницы
+    searchQuery.value = '';
+
     // Загружаем клиентов сначала для возможности поиска по ID
     if (clientStore.clients.length === 0) {
       await clientStore.fetchClients();
@@ -422,6 +658,16 @@ h1 {
   justify-content: center;
 }
 
+.no-results-message {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+  text-align: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .loader {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #007bff;
@@ -580,7 +826,7 @@ td:nth-child(4) {
 th.col-amount,
 td:nth-child(5) {
   min-width: 100px;
-  text-align: right;
+  /* text-align: right; */
 }
 
 th.col-status,
@@ -710,6 +956,11 @@ td.actions-cell {
 
 .action-links-container .btn-primary::before {
   content: '\2139';
+  color: white;
+}
+
+.action-links-container .btn-danger::before {
+  content: '\1F5D1';
   color: white;
 }
 

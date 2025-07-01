@@ -1,293 +1,224 @@
 <template>
-  <div class="calculation-form-view">
-    <div class="container mx-auto px-4 py-8">
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Создать новый расчет</h1>
-        <p class="text-gray-600">Заполните форму для расчета стоимости изделия из камня</p>
-        <button @click="resetForm" type="button"
-          class="mt-2 px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
-          Сбросить форму
-        </button>
+  <div class="calculation-editor">
+    <div class="header">
+      <h1>Создать новый расчет</h1>
+      <p>Заполните форму для расчета стоимости изделия из камня</p>
+    </div>
+
+    <div class="calculation-layout">
+      <div class="form-column">
+        <form @submit.prevent="handleCalculate" class="calculation-form-container" novalidate>
+          <div class="form-group required-field">
+            <label for="stoneName">Артикул камня</label>
+            <div class="search-container">
+              <input id="stoneName" v-model="calculationStore.form.stoneName" @input="handleSearchInput"
+                @focus="showDropdown = true" @blur="handleBlur" type="text"
+                placeholder="Введите артикул или поиск по названию, поставщику..." class="form-control" required
+                autocomplete="off" />
+              <div v-if="showDropdown && filteredMaterials.length > 0" class="search-dropdown">
+                <div v-for="material in filteredMaterials" :key="material.id" @mousedown="selectMaterial(material)"
+                  class="search-item">
+                  <div class="font-medium">{{ material.color_code || material.material_name }}</div>
+                  <div class="search-item-details">
+                    {{ material.material_name }} •
+                    {{ material.supplier_details?.company_name || 'Поставщик не указан' }} •
+                    {{ formatCurrency(material.cost_per_sqm || 0) }}/м²
+                  </div>
+                  <div v-if="material.note" class="search-item-note">{{ material.note }}</div>
+                </div>
+              </div>
+              <div v-if="showDropdown && calculationStore.form.stoneName.length > 0 && filteredMaterials.length === 0"
+                class="search-dropdown-empty">
+                Материал не найден
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="clientSelect">Клиент (опционально)</label>
+            <select id="clientSelect" v-model="selectedClientId" @change="handleClientChange" class="form-control">
+              <option value="">Без привязки к клиенту (анонимный расчет)</option>
+              <option v-for="client in clientStore.clients" :key="client.id" :value="client.id">
+                {{ client.full_name }} • {{ client.contact_phone }}
+              </option>
+            </select>
+            <p class="field-description">Выберите клиента или оставьте пустым для анонимного расчета.</p>
+          </div>
+
+          <div class="form-group required-field">
+            <label for="productArea">Площадь изделия (м²)</label>
+            <input id="productArea" v-model.number="calculationStore.form.productArea" type="number" step="0.01" min="0"
+              class="form-control" required />
+          </div>
+
+          <div class="form-check">
+            <input id="measurementRequired" v-model="calculationStore.form.measurementRequired" type="checkbox"
+              class="form-check-input" />
+            <label for="measurementRequired" class="form-check-label">Требуется замер</label>
+          </div>
+
+          <div class="form-group">
+            <label for="surfaceBonding">Склейка поверхностей при ширине более 750мм (м.п.)</label>
+            <input id="surfaceBonding" v-model.number="calculationStore.form.surfaceBonding" type="number" step="0.01"
+              min="0" class="form-control" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="edgeType">Тип торцевой кромки</label>
+              <select id="edgeType" v-model="calculationStore.form.edgeType" class="form-control">
+                <option value="radius">Радиусная</option>
+                <option value="figured">Фигурная</option>
+              </select>
+            </div>
+            <div class="form-group form-group-half">
+              <label for="edgeLength">Длина кромки (м.п.)</label>
+              <input id="edgeLength" v-model.number="calculationStore.form.edgeLength" type="number" step="0.01" min="0"
+                class="form-control" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="drainageType">Тип водоотбойника</label>
+              <select id="drainageType" v-model="calculationStore.form.drainageType" class="form-control">
+                <option value="overlay">Накладной</option>
+                <option value="integrated">Интегрированный</option>
+              </select>
+            </div>
+            <div class="form-group form-group-half">
+              <label for="drainageLength">Длина водоотбойника (м.п.)</label>
+              <input id="drainageLength" v-model.number="calculationStore.form.drainageLength" type="number" step="0.01"
+                min="0" class="form-control" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="frontBend">Подгиб с лицевой стороны (м.п.)</label>
+            <input id="frontBend" v-model.number="calculationStore.form.frontBend" type="number" step="0.01" min="0"
+              class="form-control" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="ventilationHoles">Вентиляционные отверстия (шт.)</label>
+              <input id="ventilationHoles" v-model.number="calculationStore.form.ventilationHoles" type="number" min="0"
+                class="form-control" />
+            </div>
+            <div class="form-group form-group-half">
+              <label for="cooktopCutouts">Отверстия под варочную панель (шт.)</label>
+              <input id="cooktopCutouts" v-model.number="calculationStore.form.cooktopCutouts" type="number" min="0"
+                class="form-control" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="overlaySinkCutouts">Отверстия под накладную мойку (шт.)</label>
+              <input id="overlaySinkCutouts" v-model.number="calculationStore.form.overlaySinkCutouts" type="number"
+                min="0" class="form-control" />
+            </div>
+            <div class="form-group form-group-half">
+              <label for="undermountSinkInstallations">Вклейка мойки подстольного монтажа (шт.)</label>
+              <input id="undermountSinkInstallations" v-model.number="calculationStore.form.undermountSinkInstallations"
+                type="number" min="0" class="form-control" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="onSiteJoining">Стыковка изделия на объекте (шт.)</label>
+            <input id="onSiteJoining" v-model.number="calculationStore.form.onSiteJoining" type="number" min="0"
+              class="form-control" />
+          </div>
+
+          <div class="form-group">
+            <label for="deliveryType">Доставка изделия</label>
+            <select id="deliveryType" v-model="calculationStore.form.deliveryType" class="form-control">
+              <option value="city">В черте города</option>
+              <option value="outside_city">За пределы города</option>
+            </select>
+          </div>
+
+          <div class="complexity-section">
+            <h2>Надбавка за сложность</h2>
+            <div class="form-row">
+              <div class="form-group form-group-half">
+                <label for="radius10to300">Радиус 10-300мм (шт.)</label>
+                <input id="radius10to300" v-model.number="calculationStore.form.complexityAdditions.radius10to300"
+                  type="number" min="0" class="form-control" />
+              </div>
+              <div class="form-group form-group-half">
+                <label for="radius300to1000">Радиус 300-1000мм (шт.)</label>
+                <input id="radius300to1000" v-model.number="calculationStore.form.complexityAdditions.radius300to1000"
+                  type="number" min="0" class="form-control" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group form-group-half">
+                <label for="verticalRadius">Вертикальный радиус (шт.)</label>
+                <input id="verticalRadius" v-model.number="calculationStore.form.complexityAdditions.verticalRadius"
+                  type="number" min="0" class="form-control" />
+              </div>
+              <div class="form-group form-group-half">
+                <label for="twoPlaneProduct">Изделие в 2х плоскостях (шт.)</label>
+                <input id="twoPlaneProduct" v-model.number="calculationStore.form.complexityAdditions.twoPlaneProduct"
+                  type="number" min="0" class="form-control" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" :disabled="!calculationStore.formIsValid || calculationStore.isLoading"
+              class="btn btn-primary">
+              <span v-if="calculationStore.isLoading" class="loader"></span>
+              {{ calculationStore.isLoading ? 'Расчет...' : 'Рассчитать' }}
+            </button>
+            <button type="button" @click="resetForm" class="btn btn-danger">
+              Сбросить
+            </button>
+            <router-link to="/calculations" class="btn btn-secondary">
+              Назад к списку
+            </router-link>
+          </div>
+        </form>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2">
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <form @submit.prevent="handleSubmit" class="space-y-6">
-              <div>
-                <label for="stoneName" class="block text-sm font-medium text-gray-700 mb-2">
-                  Артикул камня *
-                </label>
-                <div class="relative">
-                  <input id="stoneName" v-model="calculationStore.form.stoneName" @input="handleSearchInput"
-                    @focus="showDropdown = true" @blur="handleBlur" type="text"
-                    placeholder="Введите артикул или поиск по названию, поставщику..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required autocomplete="off" />
+      <div class="results-column">
+        <div class="results-panel">
+          <h2 class="results-title">Результат расчета</h2>
 
-                  <div v-if="showDropdown && filteredMaterials.length > 0"
-                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    <div v-for="material in filteredMaterials" :key="material.id" @mousedown="selectMaterial(material)"
-                      class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0">
-                      <div class="font-medium">{{ material.color_code || material.material_name }}
-                      </div>
-                      <div class="text-sm text-gray-600">
-                        {{ material.material_name }} •
-                        {{ material.supplier_details?.company_name || 'Поставщик не указан' }} •
-                        {{ formatCurrency(material.cost_per_sqm || 0) }}/м²
-                      </div>
-                      <div v-if="material.note" class="text-xs text-gray-500 mt-1">{{
-                        material.note }}</div>
-                    </div>
-                  </div>
+          <div v-if="calculationStore.hasResult && calculationStore.currentResult" class="results-content">
+            <div class="total-cost-panel">
+              <p class="total-cost-label">Общая стоимость</p>
+              <p class="total-cost-value">
+                {{ formatCurrency(calculationStore.currentResult.totalCost) }}
+              </p>
+            </div>
 
-                  <div
-                    v-if="showDropdown && calculationStore.form.stoneName.length > 0 && filteredMaterials.length === 0"
-                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3 text-gray-500 text-center">
-                    Материал не найден
-                  </div>
-                </div>
+            <div class="breakdown-section">
+              <h3 class="breakdown-title">Детализация:</h3>
+              <div v-for="(item, key) in calculationStore.currentResult.breakdown" :key="key" class="breakdown-item">
+                <span>{{ getBreakdownLabel(String(key)) }}</span>
+                <span class="breakdown-price">{{ formatCurrency(item.totalPrice) }}</span>
               </div>
+            </div>
 
-              <div>
-                <label for="clientSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                  Клиент (опционально)
-                </label>
-                <div class="relative">
-                  <select id="clientSelect" v-model="selectedClientId" @change="handleClientChange"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Без привязки к клиенту (анонимный расчет)</option>
-                    <option v-for="client in clientStore.clients" :key="client.id" :value="client.id">
-                      {{ client.full_name }} • {{ client.contact_phone }}
-                    </option>
-                  </select>
-                </div>
-                <p class="mt-1 text-sm text-gray-500">
-                  Выберите клиента для привязки расчета или оставьте пустым для анонимного расчета
-                </p>
-              </div>
-
-              <div>
-                <label for="productArea" class="block text-sm font-medium text-gray-700 mb-2">
-                  Площадь изделия (м²) *
-                </label>
-                <input id="productArea" v-model.number="calculationStore.form.productArea" type="number" step="0.01"
-                  min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required />
-              </div>
-
-              <div>
-                <label class="flex items-center space-x-2">
-                  <input v-model="calculationStore.form.measurementRequired" type="checkbox"
-                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
-                  <span class="text-sm font-medium text-gray-700">Требуется замер</span>
-                </label>
-              </div>
-
-              <div>
-                <label for="surfaceBonding" class="block text-sm font-medium text-gray-700 mb-2">
-                  Склейка поверхностей при ширине более 750мм (м.п.)
-                </label>
-                <input id="surfaceBonding" v-model.number="calculationStore.form.surfaceBonding" type="number"
-                  step="0.01" min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="edgeType" class="block text-sm font-medium text-gray-700 mb-2">
-                    Тип торцевой кромки
-                  </label>
-                  <select id="edgeType" v-model="calculationStore.form.edgeType"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="radius">Радиусная</option>
-                    <option value="figured">Фигурная</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="edgeLength" class="block text-sm font-medium text-gray-700 mb-2">
-                    Длина кромки (м.п.)
-                  </label>
-                  <input id="edgeLength" v-model.number="calculationStore.form.edgeLength" type="number" step="0.01"
-                    min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="drainageType" class="block text-sm font-medium text-gray-700 mb-2">
-                    Тип водоотбойника
-                  </label>
-                  <select id="drainageType" v-model="calculationStore.form.drainageType"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="overlay">Накладной</option>
-                    <option value="integrated">Интегрированный</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="drainageLength" class="block text-sm font-medium text-gray-700 mb-2">
-                    Длина водоотбойника (м.п.)
-                  </label>
-                  <input id="drainageLength" v-model.number="calculationStore.form.drainageLength" type="number"
-                    step="0.01" min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <label for="frontBend" class="block text-sm font-medium text-gray-700 mb-2">
-                  Подгиб с лицевой стороны (м.п.)
-                </label>
-                <input id="frontBend" v-model.number="calculationStore.form.frontBend" type="number" step="0.01" min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="ventilationHoles" class="block text-sm font-medium text-gray-700 mb-2">
-                    Вентиляционные отверстия (шт.)
-                  </label>
-                  <input id="ventilationHoles" v-model.number="calculationStore.form.ventilationHoles" type="number"
-                    min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label for="cooktopCutouts" class="block text-sm font-medium text-gray-700 mb-2">
-                    Отверстия под варочную панель (шт.)
-                  </label>
-                  <input id="cooktopCutouts" v-model.number="calculationStore.form.cooktopCutouts" type="number" min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="overlaySinkCutouts" class="block text-sm font-medium text-gray-700 mb-2">
-                    Отверстия под накладную мойку (шт.)
-                  </label>
-                  <input id="overlaySinkCutouts" v-model.number="calculationStore.form.overlaySinkCutouts" type="number"
-                    min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label for="undermountSinkInstallations" class="block text-sm font-medium text-gray-700 mb-2">
-                    Вклейка мойки подстольного монтажа (шт.)
-                  </label>
-                  <input id="undermountSinkInstallations"
-                    v-model.number="calculationStore.form.undermountSinkInstallations" type="number" min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <label for="onSiteJoining" class="block text-sm font-medium text-gray-700 mb-2">
-                  Стыковка изделия на объекте (шт.)
-                </label>
-                <input id="onSiteJoining" v-model.number="calculationStore.form.onSiteJoining" type="number" min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-
-              <div>
-                <label for="deliveryType" class="block text-sm font-medium text-gray-700 mb-2">
-                  Доставка изделия
-                </label>
-                <select id="deliveryType" v-model="calculationStore.form.deliveryType"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="city">В черте города</option>
-                  <option value="outside_city">За пределы города</option>
-                </select>
-              </div>
-
-              <div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Надбавка за сложность</h3>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label for="radius10to300" class="block text-sm font-medium text-gray-700 mb-2">
-                      Радиус 10-300мм (шт.)
-                    </label>
-                    <input id="radius10to300" v-model.number="calculationStore.form.complexityAdditions.radius10to300"
-                      type="number" min="0"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label for="radius300to1000" class="block text-sm font-medium text-gray-700 mb-2">
-                      Радиус 300-1000мм (шт.)
-                    </label>
-                    <input id="radius300to1000"
-                      v-model.number="calculationStore.form.complexityAdditions.radius300to1000" type="number" min="0"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label for="verticalRadius" class="block text-sm font-medium text-gray-700 mb-2">
-                      Вертикальный радиус (шт.)
-                    </label>
-                    <input id="verticalRadius" v-model.number="calculationStore.form.complexityAdditions.verticalRadius"
-                      type="number" min="0"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label for="twoPlaneProduct" class="block text-sm font-medium text-gray-700 mb-2">
-                      Изделие в 2х плоскостях (шт.)
-                    </label>
-                    <input id="twoPlaneProduct"
-                      v-model.number="calculationStore.form.complexityAdditions.twoPlaneProduct" type="number" min="0"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex gap-4 pt-6">
-                <button type="submit" @click="handleSubmit"
-                  :disabled="!calculationStore.formIsValid || calculationStore.isLoading"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2">
-                  <span v-if="calculationStore.isLoading" class="animate-spin">⏳</span>
-                  {{ calculationStore.isLoading ? 'Расчет...' : 'Рассчитать' }}
-                </button>
-                <button type="button" @click="resetForm"
-                  class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
-                  Сбросить
-                </button>
-                <router-link to="/calculations"
-                  class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 inline-flex items-center">
-                  Назад к списку
-                </router-link>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <div class="lg:col-span-1">
-          <div class="bg-white rounded-lg shadow-md p-6 sticky top-4">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Результат расчета</h2>
-
-            <div v-if="calculationStore.hasResult && calculationStore.currentResult" class="space-y-4">
-              <div class="text-center p-4 bg-green-50 rounded-lg">
-                <p class="text-sm text-gray-600 mb-1">Общая стоимость</p>
-                <p class="text-2xl font-bold text-green-600">
-                  {{ formatCurrency(calculationStore.currentResult.totalCost) }}
-                </p>
-              </div>
-
-              <div class="space-y-2">
-                <h3 class="font-medium text-gray-900">Детализация:</h3>
-                <div v-for="(item, key) in calculationStore.currentResult.breakdown" :key="key"
-                  class="flex justify-between text-sm">
-                  <span>{{ getBreakdownLabel(String(key)) }}</span>
-                  <span class="font-medium">{{ formatCurrency(item.totalPrice) }}</span>
-                </div>
-              </div>
-
-              <button @click="clearResult"
-                class="w-full px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+            <div class="form-actions">
+              <button @click="handleSaveCalculation"
+                      :disabled="calculationStore.isLoading || !calculationStore.hasResult"
+                      :title="!calculationStore.hasResult ? 'Сначала выполните расчет' : ''"
+                      class="btn btn-primary">
+                <span v-if="calculationStore.isLoading" class="loader"></span>
+                {{ calculationStore.isLoading ? 'Сохранение...' : 'Сохранить расчет' }}
+              </button>
+              <button @click="clearResult" class="btn btn-secondary clear-results-btn">
                 Очистить результат
               </button>
             </div>
 
-            <div v-else class="text-center text-gray-500 py-8">
-              <p>Заполните форму и нажмите "Рассчитать" для получения результата</p>
-            </div>
+          </div>
+
+          <div v-else class="results-placeholder">
+            <p>Заполните форму и нажмите "Рассчитать" для получения результата</p>
           </div>
         </div>
       </div>
@@ -301,11 +232,12 @@ import { useCalculationStore } from '@/stores/calculationStore'
 import { useMaterialStore } from '@/stores/materialStore'
 import { useClientStore } from '@/stores/clientStore'
 import type { Material } from '@/types/material'
-import type { Client } from '@/types/client' // Импортируем тип Client
+import { useRouter } from 'vue-router'
 
 const calculationStore = useCalculationStore()
 const materialStore = useMaterialStore()
 const clientStore = useClientStore()
+const router = useRouter() // Инициализируем роутер
 const showDropdown = ref(false)
 
 // Computed для отслеживания выбранного клиента
@@ -358,8 +290,8 @@ const formatCurrency = (amount: number): string => {
 // Функция для получения человекочитаемых названий в детализации
 const getBreakdownLabel = (key: string): string => {
   const labels: Record<string, string> = {
-    delivery: 'Доставка', // Добавлено, так как в вашем логе breakdown есть 'delivery'
-    material: 'Стоимость камня', // Добавлено, так как в вашем логе breakdown есть 'material'
+    delivery: 'Доставка',
+    material: 'Стоимость камня',
     stoneCost: 'Стоимость камня',
     measurementCost: 'Замер',
     surfaceBondingCost: 'Склейка поверхностей',
@@ -376,14 +308,17 @@ const getBreakdownLabel = (key: string): string => {
   return labels[key] || key
 }
 
-// Обработчик отправки формы
-const handleSubmit = async () => {
-  console.log('Form submitted with client:', calculationStore.form.selectedClient)
+// Обработчик нажатия на кнопку "Рассчитать"
+const handleCalculate = async () => {
   await calculationStore.performCalculation()
-  // После успешного расчета можно перенаправить на страницу со списком, если нужно:
-  // if (calculationStore.hasResult) {
-  //   router.push('/calculations')
-  // }
+}
+
+// Обработчик нажатия на кнопку "Сохранить расчет"
+const handleSaveCalculation = async () => {
+  const success = await calculationStore.saveCalculation()
+  if (success) {
+    router.push('/calculations') // Перенаправление на страницу со всеми расчетами
+  }
 }
 
 // Сброс формы
@@ -412,8 +347,7 @@ const handleBlur = () => {
 
 // Выбор клиента
 const handleClientChange = () => {
-  // Логика уже обрабатывается в computed selectedClientId
-  console.log('Client changed to:', calculationStore.form.selectedClient?.full_name || 'Анонимный расчет')
+  // Client selection logic handled by computed property
 }
 
 // Выбор материала из списка
@@ -435,35 +369,403 @@ onMounted(async () => {
 })
 </script>
 
-
-
 <style scoped>
-.calculation-form-view {
-  min-height: 100vh;
+.calculation-editor {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 20px auto;
+  font-family: 'Arial', sans-serif;
+  color: #333;
   background-color: #f9fafb;
 }
 
-.container {
-  max-width: 1200px;
+.header {
+  text-align: left;
+  margin-bottom: 25px;
 }
 
-/* Улучшенные стили для форм */
-input:focus,
-select:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.header h1 {
+  color: #007bff;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
-.animate-spin {
+.header p {
+  font-size: 1rem;
+  color: #555;
+}
+
+/* LAYOUT */
+.calculation-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.form-column {
+  flex: 2;
+  min-width: 350px;
+}
+
+.results-column {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* FORM STYLES */
+.calculation-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: #ffffff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group-half {
+  flex-basis: calc(50% - 10px);
+  min-width: 150px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  color: #495057;
+  background-color: #fff;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.required-field label::after {
+  content: ' *';
+  color: #dc3545;
+  margin-left: 4px;
+}
+
+.field-description {
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* CHECKBOX */
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-check-input {
+  width: 1em;
+  height: 1em;
+  margin-top: 0.15em;
+  border: 1px solid #ced4da;
+  border-radius: 0.25em;
+  cursor: pointer;
+}
+
+.form-check-label {
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+/* MATERIAL SEARCH DROPDOWN */
+.search-container {
+  position: relative;
+}
+
+.search-dropdown {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  margin-top: 4px;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.search-dropdown-empty {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  margin-top: 4px;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.search-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.search-item:last-child {
+  border-bottom: none;
+}
+
+.search-item:hover {
+  background-color: #f8f9fa;
+}
+
+.search-item .font-medium {
+  font-weight: 600;
+}
+
+.search-item-details {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.search-item-note {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* COMPLEXITY SECTION */
+.complexity-section {
+  margin-top: 15px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.complexity-section h2 {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* FORM ACTIONS */
+.form-actions {
+  margin-top: 15px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* RESULTS PANEL */
+.results-panel {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  position: sticky;
+  top: 20px;
+}
+
+.results-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.results-placeholder {
+  text-align: center;
+  color: #6c757d;
+  padding: 40px 10px;
+}
+
+.total-cost-panel {
+  text-align: center;
+  padding: 15px;
+  background-color: #e9f7ef;
+  border-radius: 8px;
+  margin-bottom: 25px;
+}
+
+.total-cost-label {
+  color: #28a745;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.total-cost-value {
+  color: #218838;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.breakdown-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.breakdown-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.breakdown-price {
+  font-weight: 500;
+}
+
+.clear-results-btn {
+  width: 100%;
+}
+
+/* LOADER */
+.loader {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 1em;
+  height: 1em;
   animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 @keyframes spin {
-  from {
+  0% {
     transform: rotate(0deg);
   }
 
-  to {
+  100% {
     transform: rotate(360deg);
+  }
+}
+
+/* BUTTONS */
+.btn {
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  border: 1px solid #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: 1px solid #6c757d;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+
+/* RESPONSIVENESS */
+@media (max-width: 992px) {
+  .calculation-layout {
+    flex-direction: column;
+  }
+
+  .results-column {
+    order: -1;
+    /* Move results to the top on smaller screens */
+  }
+
+  .results-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    gap: 15px;
+  }
+
+  .form-group-half {
+    flex-basis: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions .btn {
+    width: 100%;
   }
 }
 </style>

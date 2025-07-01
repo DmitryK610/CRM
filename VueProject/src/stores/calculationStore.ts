@@ -4,18 +4,19 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { CalculationForm, CalculationResult, CalculationHistory } from '@/types/calculation'
 import type { Material } from '@/types/material'
-import type { Client } from '@/types/client' // <--- Импортируем Client type
+import type { Client } from '@/types/client'
 import {
   calculate,
   getCalculationHistory,
   deleteCalculation as deleteCalculationAPI,
+  saveNewCalculation, // <-- Импортируем новую функцию для сохранения
 } from '@/api/calculation'
 import { useNotificationStore } from './notificationStore'
-import { useClientStore } from './clientStore' // <--- Импортируем clientStore
+import { useClientStore } from './clientStore'
 
 export const useCalculationStore = defineStore('calculation', () => {
   const notificationStore = useNotificationStore()
-  const clientStore = useClientStore() // <--- Инициализируем clientStore
+  const clientStore = useClientStore()
 
   // State
   const isLoading = ref(false)
@@ -62,10 +63,12 @@ export const useCalculationStore = defineStore('calculation', () => {
   })
 
   // Actions
+
+  // Функция для выполнения расчета (только получение результата, без сохранения)
   async function performCalculation() {
     if (!formIsValid.value) {
       notificationStore.showNotification(
-        'Заполните обязательные поля: название камня и площадь изделия',
+        'Заполните обязательные поля: артикул камня и площадь изделия',
         'error',
       )
       return
@@ -73,34 +76,85 @@ export const useCalculationStore = defineStore('calculation', () => {
 
     isLoading.value = true
     try {
+      // Вызываем функцию calculate, которая только считает без сохранения
       const result = await calculate(form.value)
       currentResult.value = result
-
-      // Создаем запись в истории с сохранением формы целиком
-      const historyItem: CalculationHistory = {
-        id: result.calculationId ? String(result.calculationId) : String(Date.now()),
-        calculationId: result.calculationId || Date.now(),
-        form: { ...form.value }, // Сохраняем всю форму включая selectedClient
-        totalCost: result.totalCost,
-        breakdown: result.breakdown,
-        createdAt: result.createdAt || new Date().toISOString(),
-        client_info: form.value.selectedClient || result.client_info || null,
-        stoneName: form.value.stoneName,
-        product_area: form.value.productArea,
-        measurement_required: form.value.measurementRequired,
-      }
-
-      // Добавляем в начало массива для отображения сверху
-      history.value.unshift(historyItem)
-
-      notificationStore.showNotification('Расчет выполнен успешно', 'success')
-
-      // Сбрасываем форму после успешного создания расчета
-      resetForm()
+      notificationStore.showNotification(
+        'Расчет успешно выполнен. Нажмите "Сохранить расчет" для сохранения.',
+        'success',
+      )
     } catch (error: unknown) {
       console.error('Calculation error:', error)
       const errorMessage = (error as Error).message || 'Ошибка при выполнении расчета'
       notificationStore.showNotification(errorMessage, 'error')
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Новая функция для сохранения расчета
+  async function saveCalculation(): Promise<boolean> {
+    if (!currentResult.value) {
+      notificationStore.showNotification('Сначала выполните расчет.', 'error')
+      return false
+    }
+
+    isLoading.value = true
+    try {
+      // Отправляем текущие данные формы и результат расчета на сервер для сохранения
+      const calculationToSave = {
+        ...form.value,
+        totalCost: currentResult.value.totalCost,
+        breakdown: currentResult.value.breakdown,
+        // Передаем только ID клиента, если он выбран, или null
+        client_id: form.value.selectedClient?.id || null,
+        // Добавляем поля, которые бэкенд может ожидать напрямую
+        stone_id: form.value.selectedMaterial?.id,
+        product_area: form.value.productArea,
+        measurement_required: form.value.measurementRequired,
+        surface_bonding: form.value.surfaceBonding,
+        edge_type: form.value.edgeType,
+        edge_length: form.value.edgeLength,
+        drainage_type: form.value.drainageType,
+        drainage_length: form.value.drainageLength,
+        front_bend: form.value.frontBend,
+        ventilation_holes: form.value.ventilationHoles,
+        cooktop_cutouts: form.value.cooktopCutouts,
+        overlay_sink_cutouts: form.value.overlaySinkCutouts,
+        undermount_sink_installations: form.value.undermountSinkInstallations,
+        on_site_joining: form.value.onSiteJoining,
+        delivery_type: form.value.deliveryType,
+        complexity_additions: form.value.complexityAdditions,
+      }
+
+      const savedCalculation = await saveNewCalculation(calculationToSave)
+
+      // После успешного сохранения, добавляем его в историю
+      const historyItem: CalculationHistory = {
+        id: savedCalculation.calculationId
+          ? String(savedCalculation.calculationId)
+          : String(Date.now()),
+        calculationId: savedCalculation.calculationId || Date.now(),
+        form: { ...form.value }, // Сохраняем всю форму
+        totalCost: savedCalculation.totalCost,
+        breakdown: savedCalculation.breakdown,
+        createdAt: savedCalculation.createdAt || new Date().toISOString(),
+        client_info: form.value.selectedClient || savedCalculation.client_info || null,
+        stoneName: form.value.stoneName, // Для отображения в списке истории
+        product_area: form.value.productArea, // Для отображения в списке истории
+        measurement_required: form.value.measurementRequired, // Для отображения в списке истории
+      }
+      history.value.unshift(historyItem) // Добавляем в начало
+
+      notificationStore.showNotification('Расчет успешно сохранен!', 'success')
+      resetForm() // Сбрасываем форму после сохранения
+      clearResult() // Очищаем результат
+      return true
+    } catch (error: unknown) {
+      console.error('Error saving calculation:', error)
+      const errorMessage = (error as Error).message || 'Ошибка при сохранении расчета'
+      notificationStore.showNotification(errorMessage, 'error')
+      return false
     } finally {
       isLoading.value = false
     }
@@ -222,7 +276,7 @@ export const useCalculationStore = defineStore('calculation', () => {
 
   function resetForm() {
     form.value = { ...defaultForm }
-    currentResult.value = null
+    currentResult.value = null // Очищаем результат при сбросе формы
   }
 
   function clearResult() {
@@ -235,24 +289,18 @@ export const useCalculationStore = defineStore('calculation', () => {
   }
 
   async function deleteCalculation(id: string | number) {
-    console.log('Deleting calculation from store:', id)
     isLoading.value = true
     try {
       await deleteCalculationAPI(id)
-      console.log('Calculation deleted via API, reloading history...')
 
       // Удаляем из локального массива для мгновенного обновления UI
       history.value = history.value.filter((calc) => {
         const calcId = calc.id || calc.calculationId
         return calcId !== id && calcId !== String(id) && calcId !== Number(id)
       })
-
-      // Перезагружаем историю для синхронизации с сервером
-      // await loadHistory(); // Можно отключить, если уверен в фильтрации
-      notificationStore.showNotification('Расчет успешно удален!', 'success')
     } catch (error) {
       console.error('Error deleting calculation:', error)
-      notificationStore.showNotification('Ошибка при удалении расчета', 'error')
+      // Пробрасываем ошибку дальше для обработки в компоненте
       throw error
     } finally {
       isLoading.value = false
@@ -272,6 +320,7 @@ export const useCalculationStore = defineStore('calculation', () => {
 
     // Actions
     performCalculation,
+    saveCalculation, // <--- Добавляем новую функцию в экспортируемые действия
     loadHistory,
     resetForm,
     clearResult,

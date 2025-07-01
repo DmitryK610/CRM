@@ -1,7 +1,8 @@
 // types/attachment.ts
 export interface Attachment {
   id: number
-  order: number
+  order?: number
+  calculation?: number
   file: string
   description?: string | null
   uploaded_at: string
