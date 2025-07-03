@@ -2,6 +2,7 @@
 
 import { api } from '@/utils/api'
 import type { CalculationForm, CalculationResult, CalculationHistory } from '@/types/calculation'
+import type { PriceListFormData } from '@/types/priceList'
 
 const CALCULATION_ENDPOINT = '/api/calculations/'
 
@@ -21,6 +22,16 @@ interface DjangoPagedResponse<T> {
  * @returns Результат расчета
  */
 export async function calculate(calculationData: CalculationForm): Promise<CalculationResult> {
+  // Проверяем обязательные поля
+  if (!calculationData.selectedMaterial && !calculationData.stoneName) {
+    throw new Error('Не выбран материал для расчета')
+  }
+
+  if (!calculationData.productArea || calculationData.productArea <= 0) {
+    throw new Error('Площадь изделия должна быть больше 0')
+  }
+
+  // Если доставка не требуется, не отправляем deliveryType и не учитываем delivery_type в priceList
   const backendData = {
     // Информация о клиенте (если выбран)
     client: calculationData.selectedClient?.id || null,
@@ -34,52 +45,103 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
       : null,
 
     // Основные данные - используем формат, который ожидает CalculationSerializer
-    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName, // сериализатор ожидает color_code
-    productArea: calculationData.productArea, // сериализатор ожидает camelCase
-    measurementRequired: calculationData.measurementRequired, // сериализатор ожидает camelCase
+    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName,
+    productArea: calculationData.productArea,
+    measurementRequired: calculationData.measurementRequired,
 
     // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
-    surfaceBonding: calculationData.surfaceBonding, // сериализатор ожидает camelCase
-    edgeType: calculationData.edgeType, // сериализатор ожидает camelCase
-    edgeLength: calculationData.edgeLength, // сериализатор ожидает camelCase
-    drainageType: calculationData.drainageType, // сериализатор ожидает camelCase
-    drainageLength: calculationData.drainageLength, // сериализатор ожидает camelCase
-    frontBend: calculationData.frontBend, // сериализатор ожидает camelCase
-    ventilationHoles: calculationData.ventilationHoles, // сериализатор ожидает camelCase
-    cooktopCutouts: calculationData.cooktopCutouts, // сериализатор ожидает camelCase
-    overlaySinkCutouts: calculationData.overlaySinkCutouts, // сериализатор ожидает camelCase
-    undermountSinkInstallations: calculationData.undermountSinkInstallations, // сериализатор ожидает camelCase
-    onSiteJoining: calculationData.onSiteJoining, // сериализатор ожидает camelCase
-    deliveryType: calculationData.deliveryType, // сериализатор ожидает camelCase
+    surfaceBonding: calculationData.surfaceBonding,
+    edgeType: calculationData.edgeType,
+    edgeLength: calculationData.edgeLength,
+    drainageType: calculationData.drainageType,
+    drainageLength: calculationData.drainageLength,
+    frontBend: calculationData.frontBend,
+    ventilationHoles: calculationData.ventilationHoles,
+    cooktopCutouts: calculationData.cooktopCutouts,
+    overlaySinkCutouts: calculationData.overlaySinkCutouts,
+    undermountSinkInstallations: calculationData.undermountSinkInstallations,
+    onSiteJoining: calculationData.onSiteJoining,
+    ...(calculationData.deliveryRequired !== false && {
+      deliveryType: calculationData.deliveryType,
+    }),
 
     // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
-    complexityAdditions: calculationData.complexityAdditions, // сериализатор обрабатывает это поле
+    complexityAdditions: calculationData.complexityAdditions,
+
+    // Добавляем dollarRate в backendData
+    dollarRate: calculationData.dollarRate,
+
+    // --- ИСПРАВЛЕНО: Удалены поля, которые вызывали TypeError ---
+    ...(calculationData.priceList && {
+      priceList: {
+        measurement: calculationData.priceList.measurement,
+        surface_bonding_per_m: calculationData.priceList.surfaceBondingPerM,
+        edge_type_per_m: {
+          radius: calculationData.priceList.edgeTypePerM.radius,
+          figured: calculationData.priceList.edgeTypePerM.figured,
+        },
+        drainage_type_per_m: {
+          overlay: calculationData.priceList.drainageTypePerM.overlay,
+          integrated: calculationData.priceList.drainageTypePerM.integrated,
+        },
+        front_bend_per_m: calculationData.priceList.frontBendPerM,
+        ...(calculationData.deliveryRequired !== false && {
+          delivery_type: {
+            city: calculationData.priceList.deliveryType.city,
+            outside_city: calculationData.priceList.deliveryType.outside_city,
+          },
+        }),
+        ventilation_hole_per_unit: calculationData.priceList.ventilationHolePerUnit,
+        cooktop_cutout_per_unit: calculationData.priceList.cooktopCutoutPerUnit,
+        overlay_sink_cutout_per_unit: calculationData.priceList.overlaySinkCutoutPerUnit,
+        undermount_sink_installation_per_unit:
+          calculationData.priceList.undermountSinkInstallationPerUnit,
+        on_site_joining_per_unit: calculationData.priceList.onSiteJoiningPerUnit,
+        radius_10_to_300_per_unit: calculationData.priceList.radius10To300PerUnit,
+        radius_300_to_1000_per_unit: calculationData.priceList.radius300To1000PerUnit,
+        vertical_radius_per_unit: calculationData.priceList.verticalRadiusPerUnit,
+        two_plane_product_per_unit: calculationData.priceList.twoPlaneProductPerUnit,
+        // Удалены поля lastSaved, baseMultiplier и все коэффициенты, так как бэкенд не ожидает их здесь
+      },
+    }),
 
     // Флаг указывающий, что это предварительный расчет без сохранения
     preview_only: true,
   }
 
-  // Отправляем POST запрос на основной endpoint с флагом preview_only
-  const result = await api.post<typeof backendData, CalculationResult>(
-    CALCULATION_ENDPOINT,
-    backendData,
-  )
+  // Логирование данных для отладки
+  // ...удалён console.log...
 
-  if (!result) {
-    throw new Error('Ошибка при выполнении расчета')
+  try {
+    // Отправляем POST запрос на основной endpoint с флагом preview_only
+    const result = await api.post<typeof backendData, CalculationResult>(
+      CALCULATION_ENDPOINT,
+      backendData,
+    )
+
+    if (!result) {
+      throw new Error('Ошибка при выполнении расчета')
+    }
+
+    return result
+  } catch (error) {
+    console.error('Calculation API error:', error)
+    // Пробрасываем ошибку дальше для обработки в store
+    throw error
   }
-
-  return result
 }
 
 /**
  * Сохраняет новый расчет в базу данных.
  * Эта функция вызывается после того, как расчет был выполнен и его результат получен.
- * @param calculationData Полные данные расчета, включая результат (totalCost, breakdown).
+ * @param calculationData Полные данные расчета, включая результат (totalCost, breakdown) и прайс-лист.
  * @returns Сохраненный объект истории расчета (CalculationHistory).
  */
 export async function saveNewCalculation(
-  calculationData: CalculationForm & { totalCost: number; breakdown: Record<string, unknown> },
+  calculationData: CalculationForm & {
+    totalCost: number
+    breakdown: Record<string, unknown>
+  },
 ): Promise<CalculationHistory> {
   const backendData = {
     // Информация о клиенте (если выбран)
@@ -94,26 +156,61 @@ export async function saveNewCalculation(
       : null,
 
     // Основные данные - используем формат, который ожидает CalculationSerializer
-    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName, // сериализатор ожидает color_code
-    productArea: calculationData.productArea, // сериализатор ожидает camelCase
-    measurementRequired: calculationData.measurementRequired, // сериализатор ожидает camelCase
+    stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName,
+    productArea: calculationData.productArea,
+    measurementRequired: calculationData.measurementRequired,
 
     // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
-    surfaceBonding: calculationData.surfaceBonding, // сериализатор ожидает camelCase
-    edgeType: calculationData.edgeType, // сериализатор ожидает camelCase
-    edgeLength: calculationData.edgeLength, // сериализатор ожидает camelCase
-    drainageType: calculationData.drainageType, // сериализатор ожидает camelCase
-    drainageLength: calculationData.drainageLength, // сериализатор ожидает camelCase
-    frontBend: calculationData.frontBend, // сериализатор ожидает camelCase
-    ventilationHoles: calculationData.ventilationHoles, // сериализатор ожидает camelCase
-    cooktopCutouts: calculationData.cooktopCutouts, // сериализатор ожидает camelCase
-    overlaySinkCutouts: calculationData.overlaySinkCutouts, // сериализатор ожидает camelCase
-    undermountSinkInstallations: calculationData.undermountSinkInstallations, // сериализатор ожидает camelCase
-    onSiteJoining: calculationData.onSiteJoining, // сериализатор ожидает camelCase
-    deliveryType: calculationData.deliveryType, // сериализатор ожидает camelCase
+    surfaceBonding: calculationData.surfaceBonding,
+    edgeType: calculationData.edgeType,
+    edgeLength: calculationData.edgeLength,
+    drainageType: calculationData.drainageType,
+    drainageLength: calculationData.drainageLength,
+    frontBend: calculationData.frontBend,
+    ventilationHoles: calculationData.ventilationHoles,
+    cooktopCutouts: calculationData.cooktopCutouts,
+    overlaySinkCutouts: calculationData.overlaySinkCutouts,
+    undermountSinkInstallations: calculationData.undermountSinkInstallations,
+    onSiteJoining: calculationData.onSiteJoining,
+    deliveryType: calculationData.deliveryType,
 
     // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
-    complexityAdditions: calculationData.complexityAdditions, // сериализатор обрабатывает это поле
+    complexityAdditions: calculationData.complexityAdditions,
+
+    // Добавляем dollarRate в backendData для сохранения
+    dollarRate: calculationData.dollarRate,
+
+    // --- ИСПРАВЛЕНО: Удалены поля, которые вызывали TypeError ---
+    ...(calculationData.priceList && {
+      priceList: {
+        measurement: calculationData.priceList.measurement,
+        surface_bonding_per_m: calculationData.priceList.surfaceBondingPerM,
+        edge_type_per_m: {
+          radius: calculationData.priceList.edgeTypePerM.radius,
+          figured: calculationData.priceList.edgeTypePerM.figured,
+        },
+        drainage_type_per_m: {
+          overlay: calculationData.priceList.drainageTypePerM.overlay,
+          integrated: calculationData.priceList.drainageTypePerM.integrated,
+        },
+        front_bend_per_m: calculationData.priceList.frontBendPerM,
+        delivery_type: {
+          city: calculationData.priceList.deliveryType.city,
+          outside_city: calculationData.priceList.deliveryType.outside_city,
+        },
+        ventilation_hole_per_unit: calculationData.priceList.ventilationHolePerUnit,
+        cooktop_cutout_per_unit: calculationData.priceList.cooktopCutoutPerUnit,
+        overlay_sink_cutout_per_unit: calculationData.priceList.overlaySinkCutoutPerUnit,
+        undermount_sink_installation_per_unit:
+          calculationData.priceList.undermountSinkInstallationPerUnit,
+        on_site_joining_per_unit: calculationData.priceList.onSiteJoiningPerUnit,
+        radius_10_to_300_per_unit: calculationData.priceList.radius10To300PerUnit,
+        radius_300_to_1000_per_unit: calculationData.priceList.radius300To1000PerUnit,
+        vertical_radius_per_unit: calculationData.priceList.verticalRadiusPerUnit,
+        two_plane_product_per_unit: calculationData.priceList.twoPlaneProductPerUnit,
+        // Удалены поля lastSaved, baseMultiplier и все коэффициенты, так как бэкенд не ожидает их здесь
+      },
+    }),
 
     // Результаты расчета не нужно передавать - бэкенд пересчитает их
     // totalCost: calculationData.totalCost,

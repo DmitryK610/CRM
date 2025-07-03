@@ -10,7 +10,6 @@ export interface MaterialCreatePayload {
   color_code: string
   note: string | null
   cost: number
-  cost_per_sqm: number
   supplier: number
 }
 
@@ -19,7 +18,6 @@ export interface MaterialUpdatePayload {
   color_code?: string
   note?: string | null
   cost?: number
-  cost_per_sqm?: number
   supplier?: number
 }
 

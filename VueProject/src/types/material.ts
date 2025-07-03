@@ -9,8 +9,6 @@ export interface Material {
 
   cost: number
 
-  cost_per_sqm: number // Стоимость одного квадратного метра изделия
-
   note?: string // Дополнительное поле для описания материала
 
   created_at: string // Add the missing property

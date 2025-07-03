@@ -28,6 +28,7 @@ export interface OrderCreatePayload {
   advance_payment_date?: string | null
   note?: string | null
   advance_payment_type?: AdvancePaymentType | null
+  calculation?: number | null
   order_items: Array<{
     product_name: string
     quantity: number | null
@@ -68,7 +69,7 @@ export interface OrderItem {
 export interface Order {
   id: number
   client: number | null
-  calculation_id: number | null
+  calculation: number | null
   total_amount: number
   material: number | null
   material_quantity: number | null

@@ -119,6 +119,19 @@
         </p>
       </div>
 
+      <div class="details-section" v-if="calculation.orderId || hasLinkedOrder">
+        <h2>Связанный заказ</h2>
+        <div class="detail-line">
+          <strong>Заказ:</strong>
+          <span v-if="calculation.orderId" class="order-link">
+            <router-link :to="`/orders/${calculation.orderId}`" class="btn btn-sm btn-outline-success order-btn">
+              Заказ #{{ calculation.orderId }}
+            </router-link>
+          </span>
+          <span v-else class="text-muted">Заказ не создан</span>
+        </div>
+      </div>
+
       <div class="back-button-container">
         <button @click="goBack" class="btn btn-secondary">
           ← Назад к расчетам
@@ -205,6 +218,10 @@ const hasComplexityAdditions = computed(() => {
   }
 
   return false
+})
+
+const hasLinkedOrder = computed(() => {
+  return calculation.value?.orderId !== undefined && calculation.value?.orderId !== null
 })
 
 // Функции форматирования (взяты из OrderDetailView.vue для консистентности)
@@ -799,6 +816,37 @@ onMounted(async () => {
 .btn-secondary:hover {
   background-color: #5a6268;
   border-color: #545b62;
+}
+
+.btn-outline-success {
+  background-color: transparent;
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-outline-success:hover {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.order-link {
+  display: inline-block;
+}
+
+.order-btn {
+  margin: 0;
+  border-radius: 3px;
+}
+
+.text-muted {
+  color: #6c757d;
+  font-style: italic;
 }
 
 /* Сообщения о состоянии (загрузка, ошибка, нет результатов) */

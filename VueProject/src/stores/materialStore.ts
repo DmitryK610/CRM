@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Material } from '@/types/material'
 import * as materialApi from '@/api/material'
 import type { MaterialCreatePayload, MaterialUpdatePayload } from '@/api/material'
@@ -9,7 +9,6 @@ interface MaterialPayload {
   color_code?: string
   note?: string
   cost: number
-  cost_per_sqm: number
   supplier: number
 }
 
@@ -17,7 +16,18 @@ export const useMaterialStore = defineStore('material', () => {
   const materials = ref<Material[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const dollarRate = ref(100) // Курс доллара по умолчанию
+  // Инициализация курса доллара из localStorage, если есть сохранённое значение
+  const dollarRateStorageKey = 'dollarRate'
+  const savedDollarRate = localStorage.getItem(dollarRateStorageKey)
+  const dollarRate = ref(savedDollarRate ? Number(savedDollarRate) : 100)
+
+  // Добавляем вычисляемое свойство для проверки валидности курса доллара
+  const isDollarRateValid = computed(() => dollarRate.value > 0)
+
+  // Следим за изменением курса доллара и сохраняем в localStorage
+  watch(dollarRate, (newRate: number) => {
+    localStorage.setItem(dollarRateStorageKey, String(newRate))
+  })
 
   const getMaterials = computed(() => materials.value)
   const getIsLoading = computed(() => isLoading.value)
@@ -91,7 +101,6 @@ export const useMaterialStore = defineStore('material', () => {
         color_code: materialData.color_code || '',
         note: materialData.note || null,
         cost: materialData.cost,
-        cost_per_sqm: materialData.cost_per_sqm,
         supplier: materialData.supplier,
       }
 
@@ -133,9 +142,6 @@ export const useMaterialStore = defineStore('material', () => {
       }
       if (materialData.cost !== undefined) {
         apiData.cost = materialData.cost
-      }
-      if (materialData.cost_per_sqm !== undefined) {
-        apiData.cost_per_sqm = materialData.cost_per_sqm
       }
       if (materialData.supplier !== undefined) {
         apiData.supplier = materialData.supplier // Вернули supplier
@@ -184,11 +190,20 @@ export const useMaterialStore = defineStore('material', () => {
     error.value = null
   }
 
+  // Метод для проверки и установки валидного значения курса доллара
+  function ensureValidDollarRate() {
+    if (!isDollarRateValid.value) {
+      dollarRate.value = 100 // Сбрасываем на умолчание, если некорректно
+    }
+  }
+
   return {
     materials,
     isLoading,
     error,
     dollarRate,
+    isDollarRateValid,
+    ensureValidDollarRate, // Экспонируем метод
     getMaterials,
     getIsLoading,
     getError,

@@ -54,6 +54,17 @@
         </div>
 
         <div class="detail-line">
+          <strong>Связанный расчет:</strong>
+          <span v-if="order.calculation" class="calculation-link">
+            <router-link :to="`/calculations/${order.calculation}`"
+              class="btn btn-sm btn-outline-primary calculation-btn">
+              Расчет #{{ order.calculation }}
+            </router-link>
+          </span>
+          <span v-else class="text-muted">Расчет не привязан</span>
+        </div>
+
+        <div class="detail-line">
           <strong>Статус:</strong>
           <span>
             <span :class="['status-badge', getStatusClass(order.status)]">
@@ -402,6 +413,37 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
 .btn-secondary:hover {
   background-color: #5a6268;
   border-color: #545b62;
+}
+
+.btn-outline-primary {
+  background-color: transparent;
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.calculation-link {
+  display: inline-block;
+}
+
+.calculation-btn {
+  margin: 0;
+  border-radius: 3px;
+}
+
+.text-muted {
+  color: #6c757d;
+  font-style: italic;
 }
 
 .status-message {

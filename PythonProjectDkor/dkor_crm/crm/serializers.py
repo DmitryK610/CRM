@@ -1,9 +1,10 @@
 from rest_framework import serializers
+from decimal import Decimal
 from django.utils.timezone import now
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
     Order, OrderItem, Payment, HistoryItem, UserProfile, Attachment,
-    MaterialPurchase
+    MaterialPurchase, PriceList
 )
 
 
@@ -27,6 +28,82 @@ class SimpleMaterialSerializer(serializers.ModelSerializer):
         model = Material
         fields = ['id', 'material_name', 'color_code', 'supplier_details']
 
+class PriceListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the singleton PriceList model.
+    Handles nested JSON fields for complex price structures.
+    """
+
+    class Meta:
+        model = PriceList
+        # Note: Field names here are in snake_case as they are in the model.
+        # The djangorestframework-camel-case library will convert them to camelCase.
+        fields = [
+            'measurement',
+            'surface_bonding_per_m',
+            'edge_type_per_m',
+            'drainage_type_per_m',
+            'front_bend_per_m',
+            'delivery_type',
+            'ventilation_hole_per_unit',
+            'cooktop_cutout_per_unit',
+            'overlay_sink_cutout_per_unit',
+            'undermount_sink_installation_per_unit',
+            'on_site_joining_per_unit',
+            'radius_10_to_300_per_unit',
+            'radius_300_to_1000_per_unit',
+            'vertical_radius_per_unit',
+            'two_plane_product_per_unit',
+            'last_saved',
+            'base_multiplier', 'coefficient_0_300', 'coefficient_300_340',
+            'coefficient_340_380', 'coefficient_380_500', 'coefficient_500_550',
+            'coefficient_550_plus',
+        ]
+
+    # Convert decimal strings from JSON fields back to Decimal objects
+    def validate_edge_type_per_m(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Поле 'edge_type_per_m' должно быть объектом (словарем).")
+        cleaned_data = {}
+        for k, v in value.items():
+            try:
+                # Преобразуем в Decimal. Если v уже Decimal/int/float, он будет обработан.
+                # Если это строка, Decimal попытается ее преобразовать.
+                if v is None: # Явно обрабатываем None
+                    cleaned_data[k] = Decimal(0) # или Decimal('0.0'), в зависимости от вашего требования
+                else:
+                    cleaned_data[k] = Decimal(str(v)) # Преобразуем в строку перед Decimal для надежности
+            except (ValueError, TypeError):
+                raise serializers.ValidationError(f"Некорректное значение '{v}' для ключа '{k}' в 'edge_type_per_m'. Ожидается число.")
+        return cleaned_data
+
+    def validate_drainage_type_per_m(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Поле 'drainage_type_per_m' должно быть объектом (словарем).")
+        cleaned_data = {}
+        for k, v in value.items():
+            try:
+                if v is None:
+                    cleaned_data[k] = Decimal(0)
+                else:
+                    cleaned_data[k] = Decimal(str(v))
+            except (ValueError, TypeError):
+                raise serializers.ValidationError(f"Некорректное значение '{v}' для ключа '{k}' в 'drainage_type_per_m'. Ожидается число.")
+        return cleaned_data
+
+    def validate_delivery_type(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Поле 'delivery_type' должно быть объектом (словарем).")
+        cleaned_data = {}
+        for k, v in value.items():
+            try:
+                if v is None:
+                    cleaned_data[k] = Decimal(0)
+                else:
+                    cleaned_data[k] = Decimal(str(v))
+            except (ValueError, TypeError):
+                raise serializers.ValidationError(f"Некорректное значение '{v}' для ключа '{k}' в 'delivery_type'. Ожидается число.")
+        return cleaned_data
 
 class MaterialSerializer(serializers.ModelSerializer):
     supplier_details = SimpleSupplierSerializer(source='supplier', read_only=True)
@@ -36,7 +113,7 @@ class MaterialSerializer(serializers.ModelSerializer):
         model = Material
         fields = [
             'id', 'material_name', 'color_code', 'supplier',
-            'cost', 'cost_per_sqm', 'note', 'created_at', 'image_url',  # Добавлено cost_per_sqm
+            'cost', 'note', 'created_at', 'image_url',
             'supplier_details', 'purchases',
         ]
         read_only_fields = ('id', 'created_at', 'supplier_details', 'purchases')
@@ -77,15 +154,14 @@ class CalculationSerializer(serializers.ModelSerializer):
     overlaySinkCutouts = serializers.IntegerField(source='overlay_sink_cutouts', default=0)
     undermountSinkInstallations = serializers.IntegerField(source='undermount_sink_installations', default=0)
     onSiteJoining = serializers.IntegerField(source='on_site_joining', default=0)
-    deliveryType = serializers.ChoiceField(choices=Calculation.DeliveryType.choices, source='delivery_type',
-                                           default=Calculation.DeliveryType.CITY)
+    deliveryType = serializers.ChoiceField(choices=Calculation.DeliveryType.choices, source='delivery_type', required=False)
     complexityAdditions = serializers.JSONField(write_only=True)
     calculationId = serializers.IntegerField(source='id', read_only=True)
     totalCost = serializers.DecimalField(max_digits=12, decimal_places=2, source='total_cost', read_only=True)
     breakdown = serializers.JSONField(read_only=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True, format="%Y-%m-%dT%H:%M:%SZ")
     client_info = ClientSerializer(source='client', read_only=True)
-
+    dollarRate = serializers.DecimalField(max_digits=10, decimal_places=2, source='dollar_rate', required=True)
     class Meta:
         model = Calculation
         fields = [
@@ -93,7 +169,7 @@ class CalculationSerializer(serializers.ModelSerializer):
             'surfaceBonding', 'edgeType', 'edgeLength', 'drainageType', 'drainageLength',
             'frontBend', 'ventilationHoles', 'cooktopCutouts', 'overlaySinkCutouts',
             'undermountSinkInstallations', 'onSiteJoining', 'deliveryType',
-            'complexityAdditions', 'totalCost', 'breakdown', 'createdAt',
+            'complexityAdditions', 'totalCost', 'dollarRate', 'breakdown', 'createdAt',
         ]
         extra_kwargs = {
             'client': {'required': False, 'allow_null': True}

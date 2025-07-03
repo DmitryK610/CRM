@@ -1,29 +1,32 @@
 // src/stores/calculationStore.ts
 
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, toRaw } from 'vue'
 import type { CalculationForm, CalculationResult, CalculationHistory } from '@/types/calculation'
 import type { Material } from '@/types/material'
-import type { Client } from '@/types/client'
+import type { PriceList } from '@/types/priceList'
 import {
   calculate,
   getCalculationHistory,
   deleteCalculation as deleteCalculationAPI,
-  saveNewCalculation, // <-- Импортируем новую функцию для сохранения
+  saveNewCalculation,
 } from '@/api/calculation'
 import { useNotificationStore } from './notificationStore'
 import { useClientStore } from './clientStore'
+import { usePriceListStore } from './priceListStore'
+import { useMaterialStore } from './materialStore'
 
 export const useCalculationStore = defineStore('calculation', () => {
   const notificationStore = useNotificationStore()
   const clientStore = useClientStore()
+  const priceListStore = usePriceListStore()
+  const materialStore = useMaterialStore()
 
   // State
   const isLoading = ref(false)
   const currentResult = ref<CalculationResult | null>(null)
   const history = ref<CalculationHistory[]>([])
 
-  // Default form data
   const defaultForm: CalculationForm = {
     selectedClient: undefined,
     stoneName: '',
@@ -41,12 +44,39 @@ export const useCalculationStore = defineStore('calculation', () => {
     overlaySinkCutouts: 0,
     undermountSinkInstallations: 0,
     onSiteJoining: 0,
-    deliveryType: 'city',
+    deliveryType: undefined,
+    deliveryRequired: false,
+    orderId: null,
     complexityAdditions: {
       radius10to300: 0,
       radius300to1000: 0,
       verticalRadius: 0,
       twoPlaneProduct: 0,
+    },
+    dollarRate: 0,
+    priceList: {
+      measurement: 0,
+      surfaceBondingPerM: 0,
+      edgeTypePerM: { radius: 0, figured: 0 },
+      drainageTypePerM: { overlay: 0, integrated: 0 },
+      frontBendPerM: 0,
+      deliveryType: { city: 0, outside_city: 0 },
+      ventilationHolePerUnit: 0,
+      cooktopCutoutPerUnit: 0,
+      overlaySinkCutoutPerUnit: 0,
+      undermountSinkInstallationPerUnit: 0,
+      onSiteJoiningPerUnit: 0,
+      radius10To300PerUnit: 0,
+      radius300To1000PerUnit: 0,
+      verticalRadiusPerUnit: 0,
+      twoPlaneProductPerUnit: 0,
+      baseMultiplier: 0,
+      coefficient0To300: 0,
+      coefficient300To340: 0,
+      coefficient340To380: 0,
+      coefficient380To500: 0,
+      coefficient500To550: 0,
+      coefficient550Plus: 0,
     },
   }
 
@@ -56,31 +86,98 @@ export const useCalculationStore = defineStore('calculation', () => {
   const hasResult = computed(() => currentResult.value !== null)
   const formIsValid = computed(() => {
     return (
-      form.value.stoneName.length > 0 &&
+      form.value.selectedMaterial !== undefined &&
       form.value.productArea > 0 &&
-      form.value.selectedMaterial !== undefined
+      materialStore.dollarRate > 0
     )
   })
 
   // Actions
 
-  // Функция для выполнения расчета (только получение результата, без сохранения)
+  /**
+   * Вспомогательная функция для очистки объекта PriceList
+   * Удаляет поля, которые бэкенд не ожидает при отправке.
+   */
+  const cleanPriceListForBackend = (priceList: PriceList | null): PriceList | null => {
+    if (!priceList) {
+      return null
+    }
+    // Оставляем все поля, чтобы не было ошибок типов, но backend лишние проигнорирует
+    const cleaned: PriceList = {
+      measurement: priceList.measurement,
+      surfaceBondingPerM: priceList.surfaceBondingPerM,
+      edgeTypePerM: priceList.edgeTypePerM,
+      drainageTypePerM: priceList.drainageTypePerM,
+      frontBendPerM: priceList.frontBendPerM,
+      deliveryType: priceList.deliveryType,
+      ventilationHolePerUnit: priceList.ventilationHolePerUnit,
+      cooktopCutoutPerUnit: priceList.cooktopCutoutPerUnit,
+      overlaySinkCutoutPerUnit: priceList.overlaySinkCutoutPerUnit,
+      undermountSinkInstallationPerUnit: priceList.undermountSinkInstallationPerUnit,
+      onSiteJoiningPerUnit: priceList.onSiteJoiningPerUnit,
+      radius10To300PerUnit: priceList.radius10To300PerUnit,
+      radius300To1000PerUnit: priceList.radius300To1000PerUnit,
+      verticalRadiusPerUnit: priceList.verticalRadiusPerUnit,
+      twoPlaneProductPerUnit: priceList.twoPlaneProductPerUnit,
+      baseMultiplier: priceList.baseMultiplier,
+      coefficient0To300: priceList.coefficient0To300,
+      coefficient300To340: priceList.coefficient300To340,
+      coefficient340To380: priceList.coefficient340To380,
+      coefficient380To500: priceList.coefficient380To500,
+      coefficient500To550: priceList.coefficient500To550,
+      coefficient550Plus: priceList.coefficient550Plus,
+    }
+    return cleaned
+  }
+
+  /**
+   * Выполняет предварительный расчет стоимости без сохранения в БД.
+   */
   async function performCalculation() {
     if (!formIsValid.value) {
-      notificationStore.showNotification(
-        'Заполните обязательные поля: артикул камня и площадь изделия',
-        'error',
-      )
+      let errorMessage = 'Заполните обязательные поля: материал и площадь изделия.'
+      if (!materialStore.isDollarRateValid) {
+        materialStore.ensureValidDollarRate()
+        errorMessage = 'Пожалуйста, введите корректный курс доллара.'
+      }
+      notificationStore.showNotification(errorMessage, 'error')
+      return
+    }
+
+    if (!materialStore.dollarRate || materialStore.dollarRate <= 0) {
+      notificationStore.showNotification('Курс доллара не установлен или некорректен.', 'error')
       return
     }
 
     isLoading.value = true
     try {
-      // Вызываем функцию calculate, которая только считает без сохранения
-      const result = await calculate(form.value)
+      let currentPriceList = priceListStore.priceList // Это может быть реактивный объект
+
+      if (!currentPriceList) {
+        // Загружаем прайс-лист, если его нет
+        currentPriceList = await priceListStore.loadPriceList()
+      }
+
+      // ...удалён console.log...
+
+      // --- ИСПРАВЛЕНО: Очищаем priceList перед добавлением в payload ---
+      const cleanedPriceList = cleanPriceListForBackend(currentPriceList)
+
+      const rawForm = toRaw(form.value)
+      // Собираем CalculationForm для API (без лишних полей)
+      // Если доставка не требуется, не передаем deliveryType и обнуляем deliveryType в priceList
+      const calculationForm: CalculationForm = {
+        ...rawForm,
+        stoneName: rawForm.selectedMaterial?.color_code || '',
+        dollarRate: materialStore.dollarRate,
+        priceList: { ...cleanedPriceList } as PriceList,
+        deliveryType: rawForm.deliveryRequired ? rawForm.deliveryType : (undefined as any),
+      }
+
+      const result = await calculate(calculationForm)
       currentResult.value = result
       notificationStore.showNotification(
-        'Расчет успешно выполнен. Нажмите "Сохранить расчет" для сохранения.',
+        'Расчет успешно выполнен. Нажмите "Сохранить", чтобы добавить в историю.',
         'success',
       )
     } catch (error: unknown) {
@@ -92,63 +189,48 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
-  // Новая функция для сохранения расчета
+  /**
+   * Сохраняет текущий расчет в базу данных.
+   */
   async function saveCalculation(): Promise<boolean> {
     if (!currentResult.value) {
       notificationStore.showNotification('Сначала выполните расчет.', 'error')
       return false
     }
+    if (!formIsValid.value) {
+      notificationStore.showNotification('Невозможно сохранить невалидный расчет.', 'error')
+      return false
+    }
 
     isLoading.value = true
     try {
-      // Отправляем текущие данные формы и результат расчета на сервер для сохранения
-      const calculationToSave = {
-        ...form.value,
+      let currentPriceList = priceListStore.priceList
+      if (!currentPriceList) {
+        currentPriceList = await priceListStore.loadPriceList()
+      }
+
+      // --- ИСПРАВЛЕНО: Очищаем priceList перед добавлением в payload ---
+      const cleanedPriceList = cleanPriceListForBackend(currentPriceList)
+
+      const rawForm = toRaw(form.value)
+      // Собираем CalculationForm для API (без лишних полей)
+      const calculationForm: CalculationForm = {
+        ...rawForm,
+        stoneName: rawForm.selectedMaterial?.color_code || '',
+        dollarRate: materialStore.dollarRate,
+        priceList: cleanedPriceList as PriceList,
+      }
+      // saveNewCalculation требует также totalCost и breakdown, берем их из currentResult
+      if (!currentResult.value) throw new Error('Нет результата для сохранения')
+      const savedCalculation = await saveNewCalculation({
+        ...calculationForm,
         totalCost: currentResult.value.totalCost,
         breakdown: currentResult.value.breakdown,
-        // Передаем только ID клиента, если он выбран, или null
-        client_id: form.value.selectedClient?.id || null,
-        // Добавляем поля, которые бэкенд может ожидать напрямую
-        stone_id: form.value.selectedMaterial?.id,
-        product_area: form.value.productArea,
-        measurement_required: form.value.measurementRequired,
-        surface_bonding: form.value.surfaceBonding,
-        edge_type: form.value.edgeType,
-        edge_length: form.value.edgeLength,
-        drainage_type: form.value.drainageType,
-        drainage_length: form.value.drainageLength,
-        front_bend: form.value.frontBend,
-        ventilation_holes: form.value.ventilationHoles,
-        cooktop_cutouts: form.value.cooktopCutouts,
-        overlay_sink_cutouts: form.value.overlaySinkCutouts,
-        undermount_sink_installations: form.value.undermountSinkInstallations,
-        on_site_joining: form.value.onSiteJoining,
-        delivery_type: form.value.deliveryType,
-        complexity_additions: form.value.complexityAdditions,
-      }
-
-      const savedCalculation = await saveNewCalculation(calculationToSave)
-
-      // После успешного сохранения, добавляем его в историю
-      const historyItem: CalculationHistory = {
-        id: savedCalculation.calculationId
-          ? String(savedCalculation.calculationId)
-          : String(Date.now()),
-        calculationId: savedCalculation.calculationId || Date.now(),
-        form: { ...form.value }, // Сохраняем всю форму
-        totalCost: savedCalculation.totalCost,
-        breakdown: savedCalculation.breakdown,
-        createdAt: savedCalculation.createdAt || new Date().toISOString(),
-        client_info: form.value.selectedClient || savedCalculation.client_info || null,
-        stoneName: form.value.stoneName, // Для отображения в списке истории
-        product_area: form.value.productArea, // Для отображения в списке истории
-        measurement_required: form.value.measurementRequired, // Для отображения в списке истории
-      }
-      history.value.unshift(historyItem) // Добавляем в начало
+      })
+      history.value.unshift(savedCalculation)
 
       notificationStore.showNotification('Расчет успешно сохранен!', 'success')
-      resetForm() // Сбрасываем форму после сохранения
-      clearResult() // Очищаем результат
+      resetForm()
       return true
     } catch (error: unknown) {
       console.error('Error saving calculation:', error)
@@ -160,113 +242,16 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
+  /**
+   * Загружает историю расчетов с сервера.
+   */
   async function loadHistory() {
     isLoading.value = true
     try {
-      // Сохраняем существующие локальные данные о клиентах
-      const existingLocalClients = new Map<string | number, Client>()
-      history.value.forEach((item) => {
-        const id = item.id || item.calculationId
-        if (id && item.form?.selectedClient) {
-          existingLocalClients.set(id, item.form.selectedClient)
-        }
-      })
-
-      // Убедимся, что клиенты загружены перед обработкой истории
-      if (!clientStore.clients.length) {
-        await clientStore.fetchClients()
-      }
-
       const historyData = await getCalculationHistory()
-
-      if (Array.isArray(historyData)) {
-        // Обогащаем данные истории информацией о клиенте
-        history.value = historyData
-          .map((item: CalculationHistory) => {
-            const itemId = item.id || item.calculationId
-            let clientObj: Client | undefined
-            let clientFullName: string = 'Анонимный расчет'
-
-            // Сначала проверяем, есть ли локально сохраненный клиент для этого расчета
-            if (itemId && existingLocalClients.has(itemId)) {
-              clientObj = existingLocalClients.get(itemId)!
-              clientFullName = clientObj.full_name
-            }
-            // Проверяем, есть ли client_info как объект (предпочтительно от бэкенда)
-            else if (
-              item.client_info &&
-              typeof item.client_info === 'object' &&
-              'id' in item.client_info
-            ) {
-              clientObj = item.client_info as Client
-              clientFullName = clientObj.full_name || 'Неизвестный клиент (из client_info)'
-            }
-            // Если client_info - это просто строка (для обратной совместимости)
-            else if (typeof item.client_info === 'string' && item.client_info.trim() !== '') {
-              clientFullName = item.client_info
-            }
-            // Если client - это число (ID), ищем в clientStore
-            else if (typeof item.client === 'number') {
-              const foundClient = clientStore.clients.find((c) => c.id === item.client)
-              if (foundClient) {
-                clientObj = foundClient
-                clientFullName = foundClient.full_name
-              }
-            }
-            // Если client - это объект клиента
-            else if (item.client && typeof item.client === 'object' && 'id' in item.client) {
-              clientObj = item.client as Client
-              clientFullName = clientObj.full_name || 'Неизвестный клиент (из client object)'
-            }
-
-            return {
-              ...item,
-              client_info: clientObj
-                ? {
-                    id: clientObj.id,
-                    full_name: clientObj.full_name,
-                    contact_phone: clientObj.contact_phone,
-                    email: clientObj.email,
-                    address: clientObj.address,
-                  }
-                : null,
-              form: {
-                ...defaultForm,
-                stoneName: item.stoneName || item.form?.stoneName || '',
-                productArea: item.product_area || item.form?.productArea || 0,
-                selectedMaterial: item.form?.selectedMaterial,
-                selectedClient: clientObj,
-                measurementRequired:
-                  item.measurement_required || item.form?.measurementRequired || false,
-                surfaceBonding: item.surface_bonding || item.form?.surfaceBonding || 0,
-                edgeType: item.edge_type || item.form?.edgeType || 'radius',
-                edgeLength: item.edge_length || item.form?.edgeLength || 0,
-                drainageType: item.drainage_type || item.form?.drainageType || 'overlay',
-                drainageLength: item.drainage_length || item.form?.drainageLength || 0,
-                frontBend: item.front_bend || item.form?.frontBend || 0,
-                ventilationHoles: item.ventilation_holes || item.form?.ventilationHoles || 0,
-                cooktopCutouts: item.cooktop_cutouts || item.form?.cooktopCutouts || 0,
-                overlaySinkCutouts: item.overlay_sink_cutouts || item.form?.overlaySinkCutouts || 0,
-                undermountSinkInstallations:
-                  item.undermount_sink_installations || item.form?.undermountSinkInstallations || 0,
-                onSiteJoining: item.on_site_joining || item.form?.onSiteJoining || 0,
-                deliveryType: item.delivery_type || item.form?.deliveryType || 'city',
-                complexityAdditions: item.form?.complexityAdditions || {
-                  radius10to300: 0,
-                  radius300to1000: 0,
-                  verticalRadius: 0,
-                  twoPlaneProduct: 0,
-                },
-              } as CalculationForm,
-              clientNameForDisplay: clientFullName,
-            }
-          })
-          .filter((item) => item && (item.id || item.calculationId))
-      } else {
-        history.value = []
-      }
+      history.value = historyData || []
     } catch (error) {
-      console.warn('Failed to load calculation history:', error)
+      console.error('Failed to load calculation history:', error)
       history.value = []
       notificationStore.showNotification('Ошибка при загрузке истории расчетов.', 'error')
     } finally {
@@ -274,37 +259,47 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
-  function resetForm() {
-    form.value = { ...defaultForm }
-    currentResult.value = null // Очищаем результат при сбросе формы
-  }
-
-  function clearResult() {
-    currentResult.value = null
-  }
-
-  function setSelectedMaterial(material: Material) {
-    form.value.selectedMaterial = material
-    form.value.stoneName = material.color_code || material.material_name
-  }
-
+  /**
+   * Удаляет расчет по ID.
+   */
   async function deleteCalculation(id: string | number) {
     isLoading.value = true
     try {
       await deleteCalculationAPI(id)
-
-      // Удаляем из локального массива для мгновенного обновления UI
-      history.value = history.value.filter((calc) => {
-        const calcId = calc.id || calc.calculationId
-        return calcId !== id && calcId !== String(id) && calcId !== Number(id)
-      })
+      history.value = history.value.filter((calc) => calc.calculationId !== Number(id))
+      notificationStore.showNotification('Расчет удален.', 'success')
     } catch (error) {
       console.error('Error deleting calculation:', error)
-      // Пробрасываем ошибку дальше для обработки в компоненте
+      notificationStore.showNotification('Ошибка при удалении расчета.', 'error')
       throw error
     } finally {
       isLoading.value = false
     }
+  }
+
+  /**
+   * Сбрасывает форму и результат к значениям по умолчанию.
+   */
+  function resetForm() {
+    const currentDollarRate = materialStore.dollarRate
+    form.value = { ...defaultForm, complexityAdditions: { ...defaultForm.complexityAdditions } }
+    currentResult.value = null
+    materialStore.dollarRate = currentDollarRate
+  }
+
+  /**
+   * Очищает только панель с результатом.
+   */
+  function clearResult() {
+    currentResult.value = null
+  }
+
+  /**
+   * Устанавливает выбранный материал в форму.
+   */
+  function setSelectedMaterial(material: Material) {
+    form.value.selectedMaterial = material
+    form.value.stoneName = material.color_code
   }
 
   return {
@@ -313,14 +308,12 @@ export const useCalculationStore = defineStore('calculation', () => {
     form,
     currentResult,
     history,
-
     // Getters
     hasResult,
     formIsValid,
-
     // Actions
     performCalculation,
-    saveCalculation, // <--- Добавляем новую функцию в экспортируемые действия
+    saveCalculation,
     loadHistory,
     resetForm,
     clearResult,

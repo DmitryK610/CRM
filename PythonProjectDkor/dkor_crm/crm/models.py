@@ -1,3 +1,5 @@
+# your_app/models.py
+
 from datetime import timezone
 from django.utils.timezone import now
 from django.db import models
@@ -9,8 +11,12 @@ from django.core.files.uploadedfile import UploadedFile
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
+from decimal import Decimal
+
+
 User = get_user_model()
 
+# ... (OrderStatus, PaymentMethod, etc. enums remain the same) ...
 class OrderStatus(models.TextChoices):
     NEW = 'Новый', _('Новый')
     CALCULATION_CONFIRMED = 'Расчет подтвержден', _('Расчет подтвержден')
@@ -56,6 +62,7 @@ class SupplierPaymentMethod(models.TextChoices):
     CASHLESS = 'cashless', _('Безналичные')
 
 
+# ... (Supplier, Material, Client, Employee, Calculation, Order, etc. models remain the same) ...
 class Supplier(models.Model):
     company_name = models.CharField(_("Company Name"), max_length=255, db_column='названиеКомпании')
     contact_person = models.CharField(_("Contact Person"), max_length=255, db_column='контактноеЛицо')
@@ -78,7 +85,6 @@ class Material(models.Model):
     color_code = models.CharField(_("Color Code"), max_length=100, db_column='артикулЦвета')
     supplier = models.ForeignKey(Supplier, verbose_name=_("Supplier"), on_delete=models.PROTECT, related_name='materials')
     cost = models.DecimalField(_("Cost per Unit"), max_digits=10, decimal_places=2, db_column='стоимостьЗаЕдиницу')
-    cost_per_sqm = models.DecimalField(_("Cost per m²"), max_digits=10, decimal_places=2, db_column='стоимостьЗаМ2')
     note = models.TextField(_("Description"), blank=True, null=True, db_column='описание')
     created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
     image_url = models.URLField(_("Image URL"), max_length=500, blank=True, null=True)
@@ -263,6 +269,15 @@ class Calculation(models.Model):
         _("Изделие в 2х плоскостях (шт.)"),
         default=0
     )
+    # --- ДОБАВЛЕНО ПОЛЕ: Курс доллара ---
+    dollar_rate = models.DecimalField(
+        _("Курс доллара"),
+        max_digits=10, # Максимальное количество цифр, включая десятичные
+        decimal_places=2, # Количество цифр после запятой
+        default=Decimal('0.0'), # Установите значение по умолчанию, чтобы избежать None
+        # null=True, # Если поле может быть пустым в БД
+        # blank=True, # Если поле может быть пустым в формах
+    )
 
     # === RESULT FIELDS (from CalculationResult) ===
     total_cost = models.DecimalField(
@@ -293,6 +308,7 @@ class Calculation(models.Model):
         verbose_name = _("Калькуляция")
         verbose_name_plural = _("Калькуляции")
         ordering = ['-created_at']
+
 
 
 class Order(models.Model):
@@ -527,3 +543,123 @@ class Attachment(models.Model):
             if storage.exists(path):
                 storage.delete(path)
         super().delete(*args, **kwargs)
+
+
+# Define functions for default JSON values
+def get_default_delivery_type():
+    return {"city": "1.00", "outside_city": "1.00"}
+
+def get_default_edge_type():
+    return {"radius": "1.00", "figured": "1.00"}
+
+def get_default_drainage_type():
+    return {"overlay": "1.00", "integrated": "1.00"}
+
+
+class PriceList(models.Model):
+    """
+    A singleton model to store all calculation unit prices.
+    This allows editing prices in the admin panel or via an API
+    without requiring code changes and redeployment.
+    """
+    # Measurement and Delivery
+    # ИСПРАВЛЕНО: default=Decimal("1.00") вместо default="1.00"
+    measurement = models.DecimalField(_("Стоимость замера"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    delivery_type = models.JSONField(
+        _("Стоимость доставки"),
+        default=get_default_delivery_type
+    )
+
+    # Work by linear meters (м.п.)
+    # ИСПРАВЛЕНО
+    surface_bonding_per_m = models.DecimalField(_("Склейка поверхностей (за м.п.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    edge_type_per_m = models.JSONField(
+        _("Стоимость кромки (за м.п.)"),
+        default=get_default_edge_type
+    )
+    drainage_type_per_m = models.JSONField(
+        _("Стоимость водоотбойника (за м.п.)"),
+        default=get_default_drainage_type
+    )
+    # ИСПРАВЛЕНО
+    front_bend_per_m = models.DecimalField(_("Подгиб (за м.п.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+
+    # Work by units (шт.)
+    # ИСПРАВЛЕНО
+    ventilation_hole_per_unit = models.DecimalField(_("Вентиляционное отверстие (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    cooktop_cutout_per_unit = models.DecimalField(_("Выпил под варочную панель (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    overlay_sink_cutout_per_unit = models.DecimalField(_("Выпил под накладную мойку (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    undermount_sink_installation_per_unit = models.DecimalField(_("Вклейка мойки подстольного монтажа (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    on_site_joining_per_unit = models.DecimalField(_("Стыковка на объекте (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+
+    # Complexity per unit (шт.)
+    # ИСПРАВЛЕНО
+    radius_10_to_300_per_unit = models.DecimalField(_("Сложность: радиус 10-300мм (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    radius_300_to_1000_per_unit = models.DecimalField(_("Сложность: радиус 300-1000мм (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    vertical_radius_per_unit = models.DecimalField(_("Сложность: вертикальный радиус (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    # ИСПРАВЛЕНО
+    two_plane_product_per_unit = models.DecimalField(_("Сложность: изделие в 2х плоскостях (за шт.)"), max_digits=10, decimal_places=2, default=Decimal("1.00"))
+
+    # Metadata
+    updated_at = models.DateTimeField(_("Последнее обновление"), auto_now=True)
+    last_saved = models.DateTimeField(_("Last Saved"), auto_now=True)
+    # ИСПРАВЛЕНО
+    base_multiplier = models.DecimalField(
+        _("Базовый множитель (было 265.1)"),
+        max_digits=10, decimal_places=4, default=Decimal("265.1")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_0_300 = models.DecimalField(
+        _("Коэф. (цена $ до 300)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.0")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_300_340 = models.DecimalField(
+        _("Коэф. (цена $ 300-340)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.085")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_340_380 = models.DecimalField(
+        _("Коэф. (цена $ 340-380)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.15")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_380_500 = models.DecimalField(
+        _("Коэф. (цена $ 380-500)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.25")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_500_550 = models.DecimalField(
+        _("Коэф. (цена $ 500-550)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.5")
+    )
+    # ИСПРАВЛЕНО
+    coefficient_550_plus = models.DecimalField(
+        _("Коэф. (цена $ от 550)"),
+        max_digits=10, decimal_places=4, default=Decimal("1.6")
+    )
+
+    def save(self, *args, **kwargs):
+        """
+        Overrides the save method to ensure only one PriceList instance exists.
+        """
+        self.pk = 1
+        super(PriceList, self).save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Прайс-лист от " + self.updated_at.strftime('%Y-%m-%d %H:%M')
+
+    class Meta:
+        verbose_name = _("Прайс-лист")
+        verbose_name_plural = _("Прайс-листы")

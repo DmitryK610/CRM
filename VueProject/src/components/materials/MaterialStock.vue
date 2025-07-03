@@ -23,14 +23,13 @@
             :clearable="false" @option:selected="handleMaterialChange" @option:deselecting="handleMaterialChange"
             appendToBody :calculatePosition="withPopper"
             :class="{ 'invalid-field': formSubmitted && !currentItem.material }">
-            <template #option="mat: Material">
+            <template #option="{ option }">
               <div class="option-content">
-                <span class="option-name">{{ mat.material_name }} ({{ mat.color_code }})</span>
-                <span class="option-supplier">{{ mat.supplier_details?.company_name || 'Нет поставщика' }}</span>
+                <span class="option-name"><strong>{{ option.material_name }} ({{ option.color_code }})</strong></span>
               </div>
             </template>
-            <template #selected-option="mat: Material">
-              <span v-if="mat">{{ mat.material_name }} ({{ mat.color_code }})</span>
+            <template #selected-option="{ option }">
+              <span v-if="option"><strong>{{ option.material_name }} ({{ option.color_code }})</strong></span>
               <span v-else>-- Выберите --</span>
             </template>
             <template #no-options="{ search, loading }">
@@ -51,18 +50,12 @@
           <div class="readonly-field form-control">{{ selectedMaterial?.color_code || '---' }}</div>
         </div>
 
-        <div class="form-group form-group-half">
-          <label>Поставщик:</label>
-          <div class="readonly-field form-control">{{ selectedMaterial?.supplier_details?.company_name || '---' }}</div>
-        </div>
-
         <div class="form-group required-group">
           <label for="quantity">Количество:</label>
           <input id="quantity" type="number" v-model.number="currentItem.quantity" required min="0.01" step="any"
             placeholder="> 0" class="form-control"
-            :class="{ 'invalid-field': formSubmitted && (currentItem.quantity === null || typeof currentItem.quantity !== 'number' || currentItem.quantity <= 0) }" />
-          <div
-            v-if="formSubmitted && (currentItem.quantity === null || typeof currentItem.quantity !== 'number' || currentItem.quantity <= 0)"
+            :class="{ 'invalid-field': formSubmitted && (typeof currentItem.quantity !== 'number' || currentItem.quantity <= 0) }" />
+          <div v-if="formSubmitted && (typeof currentItem.quantity !== 'number' || currentItem.quantity <= 0)"
             class="validation-error">
             Введите количество > 0
           </div>
@@ -72,9 +65,8 @@
           <label for="total_cost">Общая стоимость:</label>
           <input id="total_cost" type="number" v-model.number="currentItem.total_cost" required min="0" step="0.01"
             placeholder="≥ 0" class="form-control"
-            :class="{ 'invalid-field': formSubmitted && (currentItem.total_cost === null || typeof currentItem.total_cost !== 'number' || currentItem.total_cost < 0) }" />
-          <div
-            v-if="formSubmitted && (currentItem.total_cost === null || typeof currentItem.total_cost !== 'number' || currentItem.total_cost < 0)"
+            :class="{ 'invalid-field': formSubmitted && (typeof currentItem.total_cost !== 'number' || currentItem.total_cost < 0) }" />
+          <div v-if="formSubmitted && (typeof currentItem.total_cost !== 'number' || currentItem.total_cost < 0)"
             class="validation-error">
             Стоимость не может быть &lt; 0 </div>
         </div>
@@ -206,7 +198,7 @@ const formatDate = (dateString: string | Date | null | undefined): string => {
 };
 
 
-const withPopper = (dropdownList: HTMLElement, component: any, { width }: { width: string }): (() => void) => {
+const withPopper = (dropdownList: HTMLElement, component: { $refs: { toggle: HTMLElement } }, { width }: { width: string }): (() => void) => {
   dropdownList.style.width = width;
   const popperInstance = createPopper(component.$refs.toggle, dropdownList, {
     placement: 'bottom-start',
@@ -238,8 +230,8 @@ type FormItem = Omit<MaterialPurchase,
   id: number | null;
   material: number | null;
   order: number | null;
-  quantity: number | null;
-  total_cost: number | null;
+  quantity: number;
+  total_cost: number;
   notes: string | null;
 };
 
@@ -247,8 +239,8 @@ const getEmptyItem = (): FormItem => ({
   id: null,
   material: null,
   order: null,
-  quantity: null,
-  total_cost: null,
+  quantity: 0,
+  total_cost: 0,
   payment_method: 'cashless',
   purchase_order_date: safeFormatDate(new Date()) || '',
   status: 'not-received',
@@ -307,8 +299,8 @@ onMounted(async () => {
       id: purchaseToEdit.id,
       material: typeof purchaseToEdit.material === 'number' ? purchaseToEdit.material : null,
       order: typeof purchaseToEdit.order === 'number' ? purchaseToEdit.order : null,
-      quantity: Number(purchaseToEdit.quantity) || null,
-      total_cost: Number(purchaseToEdit.total_cost) || null,
+      quantity: Number(purchaseToEdit.quantity) || 0,
+      total_cost: Number(purchaseToEdit.total_cost) || 0,
       payment_method: purchaseToEdit.payment_method || 'cashless',
       purchase_order_date: safeFormatDate(purchaseToEdit.purchase_order_date) || '',
       status: purchaseToEdit.status || 'not-received',
@@ -332,6 +324,10 @@ const handleMaterialChange = () => {
   // Логика обработки изменения материала, если нужна
 };
 
+const handleStatusChange = () => {
+  // Логика обработки изменения статуса
+};
+
 
 watch(() => currentItem.value.status, (newStatus) => {
   if (newStatus !== 'received' && currentItem.value.received_date !== null) {
@@ -348,8 +344,7 @@ const filterMaterials = (options: Material[], search: string): Material[] => {
   return options.filter(mat => {
     const name = (mat.material_name || '').toLowerCase();
     const code = (mat.color_code || '').toLowerCase();
-    const supplier = (mat.supplier_details?.company_name || '').toLowerCase();
-    return name.includes(lowerSearch) || code.includes(lowerSearch) || supplier.includes(lowerSearch);
+    return name.includes(lowerSearch) || code.includes(lowerSearch);
   });
 };
 
@@ -376,11 +371,11 @@ const validateForm = (): boolean => {
     isValid = false;
   }
 
-  if (item.quantity === null || typeof item.quantity !== 'number' || item.quantity <= 0) {
+  if (typeof item.quantity !== 'number' || item.quantity <= 0) {
     isValid = false;
   }
 
-  if (item.total_cost === null || typeof item.total_cost !== 'number' || item.total_cost < 0) {
+  if (typeof item.total_cost !== 'number' || item.total_cost < 0) {
     isValid = false;
   }
 

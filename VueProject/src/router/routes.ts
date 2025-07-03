@@ -16,6 +16,7 @@ const MaterialsView = () => import('@/views/MaterialsView.vue')
 const SuppliersView = () => import('@/views/SuppliersView.vue')
 const EmployeesView = () => import('@/views/EmployeesView.vue')
 const FinancialView = () => import('@/views/FinancialView.vue')
+const PriceListView = () => import('@/views/PriceListView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const MaterialPurchaseFormView = () => import('@/components/materials/MaterialStock.vue')
@@ -50,6 +51,12 @@ export const routes: Array<RouteRecordRaw> = [
         component: OrderEditor,
       },
       {
+        path: 'orders/create-from-calculation/:calculationId',
+        name: 'OrderCreateFromCalculation',
+        component: OrderEditor,
+        props: true,
+      },
+      {
         path: 'orders/:id',
         name: 'OrderDetail',
         component: () => import('@/components/orders/OrderDetailView.vue'),
@@ -59,7 +66,7 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'orders/:id/edit',
         name: 'OrderEdit',
         component: OrderEditor,
-        props: true, //
+        props: true,
       },
       {
         path: 'clients',
@@ -155,6 +162,11 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'financial',
         name: 'Financial',
         component: FinancialView,
+      },
+      {
+        path: 'price-list',
+        name: 'PriceList',
+        component: PriceListView,
       },
       {
         path: '/:pathMatch(.*)*',

@@ -61,6 +61,22 @@
           </div>
         </div>
       </div>
+
+      <div class="form-group">
+        <label for="calculation_id">Связанный расчет (опционально)</label>
+        <select id="calculation_id" v-model="orderData.calculation_id" class="form-control"
+          @change="handleCalculationChange">
+          <option :value="null">-- Выберите расчет или оставьте пустым --</option>
+          <option v-for="calculation in availableCalculations" :key="calculation.id || calculation.calculationId"
+            :value="calculation.id || calculation.calculationId">
+            Расчет #{{ calculation.id || calculation.calculationId }} -
+            {{ getCalculationClientName(calculation) }} -
+            {{ formatCurrency(getCalculationTotalCost(calculation)) }}
+          </option>
+        </select>
+        <p class="field-description">Выберите расчет для автоматического заполнения полей или оставьте пустым.</p>
+      </div>
+
       <div class="form-row">
         <div class="form-group form-group-half required-field">
           <label for="total_amount">Сумма заказа</label>
@@ -187,13 +203,16 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore';
 import { useMaterialStore } from '@/stores/materialStore';
+import { useCalculationStore } from '@/stores/calculationStore';
 import { type Order, OrderStatus, AdvancePaymentType } from '@/types/order';
+import type { CalculationHistory } from '@/types/calculation';
 import OrderItemForm from './OrderItem.vue';
 
 const router = useRouter();
 const route = useRoute();
 const orderStore = useOrderStore();
 const materialStore = useMaterialStore();
+const calculationStore = useCalculationStore();
 const orderId = route.params.id ? Number(route.params.id) : null;
 const isEditing = computed(() => !!orderId);
 const isLoading = ref(false);
@@ -228,8 +247,8 @@ interface OrderFormData {
   advance_payment_type: AdvancePaymentType | null;
   client: number | null;
   material: number | null;
+  calculation_id: number | null;
   order_items: LocalOrderItemState[];
-
 }
 
 const currentItem = ref<LocalOrderItemState | null>(null);
@@ -249,17 +268,88 @@ const orderData = ref<OrderFormData>({
   advance_payment_type: null,
   client: null,
   material: null,
+  calculation_id: null,
   order_items: [],
 });
 
 const availableClients = computed(() => orderStore.getClients);
 const availableMaterials = computed(() => materialStore.getMaterials);
+const availableCalculations = computed(() => calculationStore.history || []);
 const availableStatuses: OrderStatus[] = Object.values(OrderStatus);
 const hasAdvancePayment = computed(() => !!orderData.value.advance_payment_amount && orderData.value.advance_payment_amount > 0);
 const paymentTypes = [
   { value: AdvancePaymentType.CASH, text: 'Наличные' },
   { value: AdvancePaymentType.CASHLESS, text: 'Безналичные' },
 ];
+
+// Функции для работы с расчетами
+const getCalculationClientName = (calculation: CalculationHistory): string => {
+  if (calculation.client_info && typeof calculation.client_info === 'object' && 'full_name' in calculation.client_info) {
+    return String(calculation.client_info.full_name);
+  }
+  if (calculation.form?.selectedClient?.full_name) {
+    return calculation.form.selectedClient.full_name;
+  }
+  return 'Клиент не указан';
+};
+
+const getCalculationTotalCost = (calculation: CalculationHistory): number => {
+  if (calculation.totalCost !== undefined && calculation.totalCost !== null) {
+    return typeof calculation.totalCost === 'string'
+      ? parseFloat(calculation.totalCost)
+      : Number(calculation.totalCost);
+  }
+  return 0;
+};
+
+const formatCurrency = (value: number | undefined | null): string => {
+  if (value === undefined || value === null) return '0 ₽';
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB'
+  }).format(value);
+};
+
+const handleCalculationChange = () => {
+  if (orderData.value.calculation_id) {
+    const selectedCalculation = availableCalculations.value.find(
+      calc => (calc.id || calc.calculationId) === orderData.value.calculation_id
+    );
+
+    if (selectedCalculation) {
+      // Автоматически заполняем поля из расчета
+      if (selectedCalculation.form?.selectedClient?.id) {
+        orderData.value.client = selectedCalculation.form.selectedClient.id;
+      }
+      if (selectedCalculation.form?.selectedMaterial?.id) {
+        orderData.value.material = selectedCalculation.form.selectedMaterial.id;
+      }
+      if (selectedCalculation.form?.productArea) {
+        orderData.value.material_quantity = selectedCalculation.form.productArea;
+      }
+      if (selectedCalculation.totalCost) {
+        const totalCost = getCalculationTotalCost(selectedCalculation);
+        orderData.value.total_amount = totalCost;
+      }
+      // Устанавливаем начальный статус
+      if (!orderData.value.status) {
+        orderData.value.status = OrderStatus.NEW;
+      }
+
+      // Добавляем базовый элемент заказа, если их нет
+      if (orderData.value.order_items.length === 0) {
+        orderData.value.order_items = [{
+          _tempId: nextNewItemId--,
+          product_name: 'Изделие из камня (по расчету)',
+          quantity: 1,
+          unit_price: getCalculationTotalCost(selectedCalculation),
+          total_price: getCalculationTotalCost(selectedCalculation),
+          description: `Площадь: ${selectedCalculation.form?.productArea || 0} м²`
+        }];
+      }
+    }
+  }
+};
 
 onMounted(async () => {
   isLoading.value = true;
@@ -269,6 +359,7 @@ onMounted(async () => {
     await Promise.all([
       orderStore.fetchClients(),
       materialStore.fetchMaterials(),
+      calculationStore.loadHistory(),
     ]);
 
     if (isEditing.value && orderId !== null) {
@@ -302,8 +393,45 @@ onMounted(async () => {
       } else {
         errorMessage.value = 'Заказ не найден.';
       }
+    } else {      // Инициализация из расчета, если есть query параметры
+      const { clientId, materialId, totalAmount, productArea } = route.query;
+      if (clientId && materialId && totalAmount && productArea) {
+        orderData.value.client = Number(clientId);
+        orderData.value.material = Number(materialId);
+        orderData.value.total_amount = Number(totalAmount);
+        orderData.value.material_quantity = Number(productArea);
+        orderData.value.status = OrderStatus.NEW;
+
+        // Пытаемся найти соответствующий расчет по параметрам
+        const matchingCalculation = availableCalculations.value.find(calc => {
+          const calcClientId = calc.form?.selectedClient?.id;
+          const calcMaterialId = calc.form?.selectedMaterial?.id;
+          const calcTotalCost = getCalculationTotalCost(calc);
+          const calcProductArea = calc.form?.productArea;
+
+          return calcClientId === Number(clientId) &&
+            calcMaterialId === Number(materialId) &&
+            Math.abs(calcTotalCost - Number(totalAmount)) < 0.01 &&
+            Math.abs((calcProductArea || 0) - Number(productArea)) < 0.01;
+        });
+
+        if (matchingCalculation) {
+          const calcId = matchingCalculation.id || matchingCalculation.calculationId;
+          orderData.value.calculation_id = typeof calcId === 'number' ? calcId : null;
+        }
+
+        // Добавляем базовый элемент заказа
+        orderData.value.order_items = [{
+          _tempId: nextNewItemId--,
+          product_name: 'Изделие из камня (по расчету)',
+          quantity: 1,
+          unit_price: Number(totalAmount),
+          total_price: Number(totalAmount),
+          description: `Площадь: ${productArea} м²`
+        }];
+      }
     }
-  } catch (err: any) {
+  } catch {
     errorMessage.value = 'Произошла ошибка при загрузке данных.';
   } finally {
     isLoading.value = false;
@@ -360,6 +488,7 @@ const isFormValid = computed(() => {
 });
 
 const preparePayload = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const payload: any = {
     ...orderData.value,
     order_items: orderData.value.order_items.map(item => {
@@ -369,6 +498,7 @@ const preparePayload = () => {
 
     client: orderData.value.client,
     material: orderData.value.material,
+    calculation: orderData.value.calculation_id ?? null,
     order_number: isEditing.value || isOrderNumberManual.value ? orderData.value.order_number : null,
 
     order_date: orderData.value.order_date,
@@ -382,6 +512,9 @@ const preparePayload = () => {
   if (!isEditing.value && payload.id === undefined) {
     delete payload.id;
   }
+
+  // Удаляем calculation_id, так как отправляем calculation
+  delete payload.calculation_id;
 
   return payload;
 };
@@ -418,8 +551,8 @@ const saveOrder = async () => {
     } else {
       errorMessage.value = 'Не удалось получить данные сохраненного заказа.';
     }
-  } catch (err: any) {
-    errorMessage.value = `Произошла ошибка при сохранении заказа: ${err.message || 'Неизвестная ошибка'}`;
+  } catch (err: unknown) {
+    errorMessage.value = `Произошла ошибка при сохранении заказа: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`;
   } finally {
     isLoading.value = false;
   }
@@ -859,6 +992,15 @@ border-top: 1px dashed #dc3545;
 .btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+/* Стили для описания полей */
+.field-description {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 5px;
+  margin-bottom: 0;
+  font-style: italic;
 }
 
 

@@ -9,28 +9,34 @@
       <div class="form-column">
         <form @submit.prevent="handleCalculate" class="calculation-form-container" novalidate>
           <div class="form-group required-field">
-            <label for="stoneName">Артикул камня</label>
-            <div class="search-container">
-              <input id="stoneName" v-model="calculationStore.form.stoneName" @input="handleSearchInput"
-                @focus="showDropdown = true" @blur="handleBlur" type="text"
-                placeholder="Введите артикул или поиск по названию, поставщику..." class="form-control" required
-                autocomplete="off" />
-              <div v-if="showDropdown && filteredMaterials.length > 0" class="search-dropdown">
-                <div v-for="material in filteredMaterials" :key="material.id" @mousedown="selectMaterial(material)"
-                  class="search-item">
-                  <div class="font-medium">{{ material.color_code || material.material_name }}</div>
-                  <div class="search-item-details">
-                    {{ material.material_name }} •
-                    {{ material.supplier_details?.company_name || 'Поставщик не указан' }} •
-                    {{ formatCurrency(material.cost_per_sqm || 0) }}/м²
-                  </div>
-                  <div v-if="material.note" class="search-item-note">{{ material.note }}</div>
+            <label for="material-select">Материал</label>
+            <v-select id="material-select" class="form-control v-select-custom" v-model="selectedMaterialId"
+              :options="availableMaterials" label="material_name" :reduce="(mat: Material) => mat.id"
+              placeholder="-- Выберите или найдите материал --" :filterable="true" :filter="filterMaterials"
+              :clearable="true" @option:selected="handleMaterialSelect" @option:deselecting="handleMaterialDeselect"
+              appendToBody :calculatePosition="withPopper">
+              <template #option="{ material_name, color_code, cost }">
+                <div class="option-content">
+                  <span class="option-name">{{ material_name }} ({{ color_code }})</span>
+                  <span class="option-cost">{{ formatCurrency(cost || 0) }}</span>
                 </div>
-              </div>
-              <div v-if="showDropdown && calculationStore.form.stoneName.length > 0 && filteredMaterials.length === 0"
-                class="search-dropdown-empty">
-                Материал не найден
-              </div>
+              </template>
+              <template #selected-option="{ material_name, color_code }">
+                <span v-if="material_name">{{ material_name }} ({{ color_code }})</span>
+                <span v-else>-- Выберите материал --</span>
+              </template>
+              <template #no-options="{ search, loading }">
+                <div v-if="loading">Поиск...</div>
+                <div v-else-if="search">Материал "{{ search }}" не найден.</div>
+                <div v-else-if="!materialStore.getMaterials?.length">Нет доступных материалов.</div>
+                <div v-else>Начните ввод для поиска...</div>
+              </template>
+            </v-select>
+            <div v-if="selectedMaterial" class="selected-material-info">
+              <span class="material-info-item"><strong>Артикул:</strong> {{ selectedMaterial.color_code }}</span>
+              <span class="material-info-item"><strong>Стоимость:</strong> {{
+                formatCurrency(selectedMaterial.cost || 0)
+              }}</span>
             </div>
           </div>
 
@@ -45,16 +51,28 @@
             <p class="field-description">Выберите клиента или оставьте пустым для анонимного расчета.</p>
           </div>
 
+          <div class="form-group">
+            <label for="orderSelect">Заказ (опционально)</label>
+            <select id="orderSelect" v-model="selectedOrderId" @change="handleOrderChange" class="form-control">
+              <option value="">Без привязки к заказу</option>
+              <option v-for="order in availableOrders" :key="order.id" :value="order.id">
+                Заказ #{{ order.id }} - {{ order.client_info?.full_name || 'N/A' }} - {{
+                  formatCurrency(order.total_amount) }}
+              </option>
+            </select>
+            <p class="field-description">Выберите заказ для привязки расчета или оставьте пустым.</p>
+          </div>
+
           <div class="form-group required-field">
             <label for="productArea">Площадь изделия (м²)</label>
             <input id="productArea" v-model.number="calculationStore.form.productArea" type="number" step="0.01" min="0"
               class="form-control" required />
           </div>
 
-          <div class="form-check">
+          <div class="form-check accent-checkbox">
             <input id="measurementRequired" v-model="calculationStore.form.measurementRequired" type="checkbox"
-              class="form-check-input" />
-            <label for="measurementRequired" class="form-check-label">Требуется замер</label>
+              class="form-check-input accent-checkbox-input" />
+            <label for="measurementRequired" class="form-check-label accent-checkbox-label">Требуется замер</label>
           </div>
 
           <div class="form-group">
@@ -130,9 +148,16 @@
               class="form-control" />
           </div>
 
+          <div class="form-check accent-checkbox">
+            <input id="deliveryRequired" type="checkbox" v-model="calculationStore.form.deliveryRequired"
+              class="form-check-input accent-checkbox-input" />
+            <label for="deliveryRequired" class="form-check-label accent-checkbox-label">Доставка требуется</label>
+          </div>
+
           <div class="form-group">
             <label for="deliveryType">Доставка изделия</label>
-            <select id="deliveryType" v-model="calculationStore.form.deliveryType" class="form-control">
+            <select id="deliveryType" v-model="calculationStore.form.deliveryType" class="form-control"
+              :disabled="!calculationStore.form.deliveryRequired">
               <option value="city">В черте города</option>
               <option value="outside_city">За пределы города</option>
             </select>
@@ -204,9 +229,8 @@
 
             <div class="form-actions">
               <button @click="handleSaveCalculation"
-                      :disabled="calculationStore.isLoading || !calculationStore.hasResult"
-                      :title="!calculationStore.hasResult ? 'Сначала выполните расчет' : ''"
-                      class="btn btn-primary">
+                :disabled="calculationStore.isLoading || !calculationStore.hasResult"
+                :title="!calculationStore.hasResult ? 'Сначала выполните расчет' : ''" class="btn btn-primary">
                 <span v-if="calculationStore.isLoading" class="loader"></span>
                 {{ calculationStore.isLoading ? 'Сохранение...' : 'Сохранить расчет' }}
               </button>
@@ -226,19 +250,43 @@
   </div>
 </template>
 
+<script lang="ts">
+import vSelect from 'vue-select'
+export default {
+  components: {
+    'v-select': vSelect
+  }
+}
+</script>
+
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useCalculationStore } from '@/stores/calculationStore'
 import { useMaterialStore } from '@/stores/materialStore'
 import { useClientStore } from '@/stores/clientStore'
+import { useOrderStore } from '@/stores/orderStore'
 import type { Material } from '@/types/material'
 import { useRouter } from 'vue-router'
+import { createPopper } from '@popperjs/core'
+import type { Options } from '@popperjs/core'
 
 const calculationStore = useCalculationStore()
 const materialStore = useMaterialStore()
 const clientStore = useClientStore()
-const router = useRouter() // Инициализируем роутер
-const showDropdown = ref(false)
+const orderStore = useOrderStore()
+const router = useRouter()
+
+// Новые переменные для v-select
+const selectedMaterialId = ref<number | null>(null)
+
+// Computed для доступных материалов
+const availableMaterials = computed(() => materialStore.getMaterials || [])
+
+// Computed для выбранного материала
+const selectedMaterial = computed(() => {
+  if (!selectedMaterialId.value) return null
+  return availableMaterials.value.find(m => m.id === selectedMaterialId.value) || null
+})
 
 // Computed для отслеживания выбранного клиента
 const selectedClientId = computed({
@@ -253,31 +301,54 @@ const selectedClientId = computed({
   }
 })
 
-// Computed для фильтрации материалов по поисковому запросу
-const filteredMaterials = computed(() => {
-  const materials = materialStore.getMaterials
-  if (!Array.isArray(materials)) {
-    return []
+// Computed для отслеживания выбранного заказа
+const selectedOrderId = computed({
+  get: () => calculationStore.form.orderId?.toString() || '',
+  set: (value: string) => {
+    if (value) {
+      calculationStore.form.orderId = Number(value)
+    } else {
+      calculationStore.form.orderId = null
+    }
   }
-
-  // Показываем результаты только при наличии поискового запроса
-  if (!calculationStore.form.stoneName.trim()) {
-    return []
-  }
-
-  const query = calculationStore.form.stoneName.toLowerCase().trim()
-  return materials
-    .filter(material => {
-      return [
-        material.id?.toString().includes(query),
-        material.material_name?.toLowerCase().includes(query),
-        material.color_code?.toLowerCase().includes(query),
-        material.note?.toLowerCase().includes(query),
-        material.supplier_details?.company_name?.toLowerCase().includes(query)
-      ].some(Boolean);
-    })
-    .slice(0, 10) // Ограничиваем результаты поиска
 })
+
+// Computed для доступных заказов (только заказы текущего клиента или все, если клиент не выбран)
+const availableOrders = computed(() => {
+  const orders = orderStore.getOrders || []
+  if (calculationStore.form.selectedClient?.id) {
+    return orders.filter(order => order.client === calculationStore.form.selectedClient?.id)
+  }
+  return orders
+})
+
+// Функция фильтрации материалов (из MaterialStock)
+const filterMaterials = (options: Material[], search: string): Material[] => {
+  const lowerSearch = search.toLowerCase().trim()
+  if (!lowerSearch) {
+    return options
+  }
+  return options.filter(mat => {
+    const name = (mat.material_name || '').toLowerCase()
+    const code = (mat.color_code || '').toLowerCase()
+    return name.includes(lowerSearch) || code.includes(lowerSearch)
+  })
+}
+
+// Функция для withPopper (из MaterialStock)
+const withPopper = (dropdownList: HTMLElement, component: { $refs: { toggle: HTMLElement } }, { width }: { width: string }): (() => void) => {
+  dropdownList.style.width = width
+  const popperInstance = createPopper(component.$refs.toggle, dropdownList, {
+    placement: 'bottom-start',
+    modifiers: [
+      { name: 'offset', options: { offset: [0, 4] } },
+      { name: 'preventOverflow', options: { boundary: 'viewport' } },
+      { name: 'flip', options: { fallbackPlacements: ['top-start'], padding: 8 } },
+    ],
+  } as Partial<Options>)
+
+  return () => popperInstance.destroy()
+}
 
 // Функция для форматирования валюты
 const formatCurrency = (amount: number): string => {
@@ -308,6 +379,20 @@ const getBreakdownLabel = (key: string): string => {
   return labels[key] || key
 }
 
+// Обработчик выбора материала
+const handleMaterialSelect = (material: Material) => {
+  selectedMaterialId.value = material.id
+  calculationStore.setSelectedMaterial(material)
+}
+
+// Обработчик очистки выбора материала
+const handleMaterialDeselect = () => {
+  selectedMaterialId.value = null
+  // Очищаем материал в форме
+  calculationStore.form.selectedMaterial = undefined
+  calculationStore.form.stoneName = ''
+}
+
 // Обработчик нажатия на кнопку "Рассчитать"
 const handleCalculate = async () => {
   await calculationStore.performCalculation()
@@ -324,7 +409,7 @@ const handleSaveCalculation = async () => {
 // Сброс формы
 const resetForm = () => {
   calculationStore.resetForm()
-  showDropdown.value = false
+  selectedMaterialId.value = null
 }
 
 // Очистка результата
@@ -332,36 +417,38 @@ const clearResult = () => {
   calculationStore.clearResult()
 }
 
-// Обработчик ввода в поле поиска
-const handleSearchInput = () => {
-  showDropdown.value = true
-}
-
-// Обработчик потери фокуса
-const handleBlur = () => {
-  // Небольшая задержка, чтобы клик по элементу списка успел сработать
-  setTimeout(() => {
-    showDropdown.value = false
-  }, 200)
-}
-
 // Выбор клиента
 const handleClientChange = () => {
-  // Client selection logic handled by computed property
+  // При изменении клиента сбрасываем выбранный заказ
+  if (calculationStore.form.orderId) {
+    calculationStore.form.orderId = null
+  }
 }
 
-// Выбор материала из списка
-const selectMaterial = (material: Material) => {
-  calculationStore.setSelectedMaterial(material)
-  showDropdown.value = false
+// Выбор заказа
+const handleOrderChange = () => {
+  // При выборе заказа можно автоматически заполнить клиента
+  if (calculationStore.form.orderId) {
+    const selectedOrder = availableOrders.value.find(order => order.id === calculationStore.form.orderId)
+    if (selectedOrder && selectedOrder.client_info) {
+      // Устанавливаем клиента из заказа, если он не был выбран ранее
+      if (!calculationStore.form.selectedClient) {
+        const clientFromOrder = clientStore.clients.find(client => client.id === selectedOrder.client)
+        if (clientFromOrder) {
+          calculationStore.form.selectedClient = clientFromOrder
+        }
+      }
+    }
+  }
 }
 
-// Загрузка материалов и клиентов при монтировании компонента
+// Загрузка материалов, клиентов и заказов при монтировании компонента
 onMounted(async () => {
   try {
     await Promise.all([
       materialStore.fetchMaterials(),
-      clientStore.fetchClients()
+      clientStore.fetchClients(),
+      orderStore.fetchOrders()
     ])
   } catch {
     // Ошибки при загрузке обрабатываются в stores
@@ -499,6 +586,36 @@ label {
 .form-check-label {
   margin-bottom: 0;
   font-weight: 500;
+}
+
+/* ACCENT CHECKBOX */
+.accent-checkbox {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.accent-checkbox-input {
+  width: 22px;
+  height: 22px;
+  accent-color: #007bff;
+  border: 2px solid #007bff;
+  margin-right: 10px;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 0 0 2px #e3f0ff;
+}
+
+.accent-checkbox-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px #b3d7ff;
+}
+
+.accent-checkbox-label {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 1.05rem;
+  cursor: pointer;
+  user-select: none;
 }
 
 /* MATERIAL SEARCH DROPDOWN */
@@ -706,6 +823,17 @@ label {
   border-color: #0056b3;
 }
 
+.btn-success {
+  background-color: #28a745;
+  color: white;
+  border: 1px solid #28a745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
 .btn-secondary {
   background-color: #6c757d;
   color: white;
@@ -731,6 +859,97 @@ label {
 .btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+/* V-SELECT CUSTOM STYLES */
+.v-select-custom {
+  font-size: 1rem;
+}
+
+.v-select-custom .vs__dropdown-toggle {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 12px;
+  min-height: 42px;
+}
+
+.v-select-custom.vs--open .vs__dropdown-toggle {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.v-select-custom .vs__search {
+  font-size: 1rem;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.v-select-custom .vs__selected {
+  font-size: 1rem;
+  color: #495057;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.v-select-custom .vs__dropdown-menu {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+}
+
+.v-select-custom .vs__dropdown-option {
+  padding: 8px 12px;
+}
+
+.v-select-custom .vs__dropdown-option--highlight {
+  background-color: #007bff;
+  color: white;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.option-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.option-cost {
+  font-size: 0.85rem;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.vs__dropdown-option--highlight .option-name,
+.vs__dropdown-option--highlight .option-cost {
+  color: white;
+}
+
+/* SELECTED MATERIAL INFO */
+.selected-material-info {
+  margin-top: 10px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+}
+
+.material-info-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.material-info-item strong {
+  color: #495057;
 }
 
 

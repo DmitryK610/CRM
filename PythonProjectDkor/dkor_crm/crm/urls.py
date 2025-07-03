@@ -13,6 +13,8 @@ from .views import (
     UserProfileViewSet,
     AttachmentViewSet,
     MaterialPurchaseViewSet,
+    PriceListViewSet,
+
 )
 
 router = routers.SimpleRouter()
@@ -29,6 +31,7 @@ router.register(r'history-items', HistoryItemViewSet, basename='historyitem')
 router.register(r'user-profiles', UserProfileViewSet, basename='userprofile')
 router.register(r'attachments', AttachmentViewSet, basename='attachment')
 router.register(r'material-purchases', MaterialPurchaseViewSet, basename='material-purchase')
+router.register(r'price-list', PriceListViewSet, basename='price-list')
 urlpatterns = [
     path('', include(router.urls)),
 ]

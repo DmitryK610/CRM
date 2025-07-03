@@ -25,6 +25,7 @@ interface OrderCreatePayload {
   advance_payment_date?: string | null
   note?: string | null
   advance_payment_type?: AdvancePaymentType | null
+  calculation_id?: number | null
   order_items: Array<{
     product_name: string
     quantity: number | null

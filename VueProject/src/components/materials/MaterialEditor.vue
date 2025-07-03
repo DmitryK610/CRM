@@ -23,11 +23,6 @@
       </div>
 
       <div class="form-group">
-        <label for="cost_per_sqm">Стоимость за м² изделия (₽):</label>
-        <input type="number" id="cost_per_sqm" v-model.number="formData.cost_per_sqm" required min="0" step="0.01">
-      </div>
-
-      <div class="form-group">
         <label for="supplierSelect">Поставщик:</label>
         <select id="supplierSelect" v-model.number="formData.supplierId" required
           :disabled="!!(supplierStore.isLoading || supplierStore.error || availableSuppliers.length === 0)">
@@ -80,7 +75,6 @@ const DEFAULT_MATERIAL: Partial<Material> = {
   color_code: '',
   note: '',
   cost: 0,
-  cost_per_sqm: 0,
 };
 const formData = reactive({
   ...DEFAULT_MATERIAL,
@@ -139,8 +133,8 @@ const handleSubmit = async () => {
 
   try {
     // Проверка обязательных полей перед отправкой
-    if (!formData.material_name || formData.cost === undefined || formData.cost === null || formData.cost_per_sqm === undefined || formData.cost_per_sqm === null || formData.supplierId === undefined) {
-      saveError.value = "Не заполнены обязательные поля (Название, Стоимость материала, Стоимость за м², Поставщик).";
+    if (!formData.material_name || formData.cost === undefined || formData.cost === null || formData.supplierId === undefined) {
+      saveError.value = "Не заполнены обязательные поля (Название, Стоимость материала, Поставщик).";
       return;
     }
     if (typeof formData.supplierId !== 'number' || formData.supplierId <= 0) {
@@ -154,7 +148,6 @@ const handleSubmit = async () => {
       color_code: formData.color_code || '',
       note: formData.note || '',
       cost: Number(formData.cost),
-      cost_per_sqm: Number(formData.cost_per_sqm),
       supplier: formData.supplierId,
     };
 

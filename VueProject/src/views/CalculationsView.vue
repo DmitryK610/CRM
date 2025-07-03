@@ -5,9 +5,14 @@
     <div class="controls-panel">
       <input v-model="searchQuery" type="text" placeholder="Поиск по клиенту, материалу, сумме или дате..."
         class="search-input" />
-      <router-link to="/calculations/new" class="button add-button">
-        Добавить новый расчет
-      </router-link>
+      <div class="button-group">
+        <router-link to="/calculations/new" class="button add-button">
+          Добавить новый расчет
+        </router-link>
+        <router-link to="/price-list" class="button price-list-button" title="Редактировать прайс-лист">
+          ⚙️ Прайс-лист
+        </router-link>
+      </div>
     </div>
 
     <div v-if="calculationStore.isLoading" class="status-message loading-message">
@@ -34,6 +39,7 @@
             <th scope="col" class="col-client">Клиент</th>
             <th scope="col" class="col-material">Материал</th>
             <th scope="col" class="col-amount">Сумма расчета</th>
+            <th scope="col" class="col-order">Заказ</th>
             <th scope="col" class="col-order-date">Дата расчета</th>
             <th scope="col" class="col-actions">Действия</th>
           </tr>
@@ -51,6 +57,14 @@
             </td>
             <td class="text-right font-medium">
               {{ formatCurrency(getTotalCost(calculation)) }}
+            </td>
+            <td class="text-center">
+              <span v-if="calculation.orderId" class="order-link">
+                <router-link :to="`/orders/${calculation.orderId}`" class="btn btn-sm btn-outline-success">
+                  Заказ #{{ calculation.orderId }}
+                </router-link>
+              </span>
+              <span v-else class="text-muted">—</span>
             </td>
             <td>
               {{ formatDate(calculation.createdAt) }}
@@ -526,6 +540,38 @@ h1 {
   background-color: #45a049;
 }
 
+/* Группа кнопок */
+.button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Кнопка прайс-листа - менее заметная */
+.price-list-button {
+  background-color: #6c757d;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  box-sizing: border-box;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.8;
+  border-radius: 4px;
+}
+
+.price-list-button:hover {
+  background-color: #5a6268;
+  opacity: 1;
+}
+
 .btn {
   padding: 6px 12px;
   border: 1px solid transparent;
@@ -562,6 +608,18 @@ h1 {
 .btn-success:hover {
   background-color: #218838;
   border-color: #1e7e34;
+}
+
+.btn-outline-success {
+  background-color: transparent;
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-outline-success:hover {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
 }
 
 .btn-warning {
@@ -819,17 +877,23 @@ td:nth-child(3) {
 }
 
 th.col-material,
-td:nth-child(4) {
+td:nth-child(3) {
   min-width: 150px;
 }
 
 th.col-amount,
-td:nth-child(5) {
+td:nth-child(4) {
   min-width: 100px;
-  /* text-align: right; */
+  text-align: right;
 }
 
-th.col-status,
+th.col-order,
+td:nth-child(5) {
+  min-width: 100px;
+  text-align: center;
+}
+
+th.col-order-date,
 td:nth-child(6) {
   min-width: 120px;
 }
@@ -903,6 +967,16 @@ td.actions-cell {
 .status-unknown {
   background-color: #e0e0e0;
   color: #666;
+}
+
+.order-link .btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+
+.text-muted {
+  color: #6c757d !important;
 }
 
 .actions-cell {
@@ -1207,6 +1281,11 @@ td.actions-cell {
     font-size: 0.9rem;
   }
 
+  .price-list-button {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
   .button {
     padding: 5px 10px;
     font-size: 11px;
@@ -1233,27 +1312,27 @@ td.actions-cell {
     min-width: 50px;
   }
 
-  th.col-order-date,
-  td:nth-child(2) {
-    min-width: 110px;
-  }
-
   th.col-client,
-  td:nth-child(3) {
+  td:nth-child(2) {
     min-width: 140px;
   }
 
   th.col-material,
-  td:nth-child(4) {
+  td:nth-child(3) {
     min-width: 140px;
   }
 
   th.col-amount,
+  td:nth-child(4) {
+    min-width: 90px;
+  }
+
+  th.col-order,
   td:nth-child(5) {
     min-width: 90px;
   }
 
-  th.col-status,
+  th.col-order-date,
   td:nth-child(6) {
     min-width: 110px;
   }
@@ -1345,6 +1424,19 @@ td.actions-cell {
     font-size: 1rem;
   }
 
+  .price-list-button {
+    width: 100%;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
   .status-message {
     flex-direction: column;
     align-items: flex-start;
@@ -1372,27 +1464,27 @@ td.actions-cell {
     min-width: 45px;
   }
 
-  th.col-order-date,
-  td:nth-child(2) {
-    min-width: 100px;
-  }
-
   th.col-client,
-  td:nth-child(3) {
+  td:nth-child(2) {
     min-width: 130px;
   }
 
   th.col-material,
-  td:nth-child(4) {
+  td:nth-child(3) {
     min-width: 130px;
   }
 
   th.col-amount,
+  td:nth-child(4) {
+    min-width: 80px;
+  }
+
+  th.col-order,
   td:nth-child(5) {
     min-width: 80px;
   }
 
-  th.col-status,
+  th.col-order-date,
   td:nth-child(6) {
     min-width: 100px;
   }
@@ -1492,27 +1584,27 @@ td.actions-cell {
     min-width: 40px;
   }
 
-  th.col-order-date,
-  td:nth-child(2) {
-    min-width: 90px;
-  }
-
   th.col-client,
-  td:nth-child(3) {
+  td:nth-child(2) {
     min-width: 110px;
   }
 
   th.col-material,
-  td:nth-child(4) {
+  td:nth-child(3) {
     min-width: 110px;
   }
 
   th.col-amount,
+  td:nth-child(4) {
+    min-width: 75px;
+  }
+
+  th.col-order,
   td:nth-child(5) {
     min-width: 75px;
   }
 
-  th.col-status,
+  th.col-order-date,
   td:nth-child(6) {
     min-width: 90px;
   }
@@ -1624,27 +1716,27 @@ td.actions-cell {
     min-width: 35px;
   }
 
-  th.col-order-date,
-  td:nth-child(2) {
-    min-width: 75px;
-  }
-
   th.col-client,
-  td:nth-child(3) {
+  td:nth-child(2) {
     min-width: 90px;
   }
 
   th.col-material,
-  td:nth-child(4) {
+  td:nth-child(3) {
     min-width: 90px;
   }
 
   th.col-amount,
+  td:nth-child(4) {
+    min-width: 65px;
+  }
+
+  th.col-order,
   td:nth-child(5) {
     min-width: 65px;
   }
 
-  th.col-status,
+  th.col-order-date,
   td:nth-child(6) {
     min-width: 75px;
   }

@@ -29,6 +29,7 @@
             <th @click="sortBy('material_name')" :class="['col-material', getSortClass('material_name')]">Материал
             </th>
             <th @click="sortBy('total_amount')" :class="['col-amount', getSortClass('total_amount')]">Сумма</th>
+            <th class="col-calculation">Расчет</th>
             <th @click="sortBy('status')" :class="['col-status', getSortClass('status')]">Статус</th>
             <th class="col-actions">Действия</th>
           </tr>
@@ -40,6 +41,15 @@
             <td>{{ orderWithDetails.clientName || 'N/A' }}</td>
             <td>{{ orderWithDetails.material_name || 'N/A' }}</td>
             <td>{{ formatCurrency(Number(orderWithDetails.total_amount)) }}</td>
+            <td>
+              <span v-if="orderWithDetails.calculation" class="calculation-link">
+                <router-link :to="`/calculations/${orderWithDetails.calculation}`"
+                  class="btn btn-sm btn-outline-primary">
+                  Расчет #{{ orderWithDetails.calculation }}
+                </router-link>
+              </span>
+              <span v-else class="text-muted">—</span>
+            </td>
             <td>
               <span :class="['status-badge', getStatusClass(orderWithDetails.status)]">
                 {{ orderWithDetails.status }}
@@ -570,6 +580,18 @@ h1 {
   border-color: #0056b3;
 }
 
+.btn-outline-primary {
+  background-color: transparent;
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
 .btn-success {
   background-color: #28a745;
   color: white;
@@ -836,8 +858,14 @@ td:nth-child(5) {
   text-align: right;
 }
 
-th.col-status,
+th.col-calculation,
 td:nth-child(6) {
+  min-width: 120px;
+  text-align: center;
+}
+
+th.col-status,
+td:nth-child(7) {
   min-width: 120px;
 }
 
@@ -910,6 +938,16 @@ td.actions-cell {
 .status-unknown {
   background-color: #e0e0e0;
   color: #666;
+}
+
+.calculation-link .btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+
+.text-muted {
+  color: #6c757d !important;
 }
 
 .actions-cell {
@@ -1255,8 +1293,13 @@ td.actions-cell {
     min-width: 90px;
   }
 
-  th.col-status,
+  th.col-calculation,
   td:nth-child(6) {
+    min-width: 110px;
+  }
+
+  th.col-status,
+  td:nth-child(7) {
     min-width: 110px;
   }
 
@@ -1394,8 +1437,13 @@ td.actions-cell {
     min-width: 80px;
   }
 
-  th.col-status,
+  th.col-calculation,
   td:nth-child(6) {
+    min-width: 100px;
+  }
+
+  th.col-status,
+  td:nth-child(7) {
     min-width: 100px;
   }
 
@@ -1514,8 +1562,13 @@ td.actions-cell {
     min-width: 75px;
   }
 
-  th.col-status,
+  th.col-calculation,
   td:nth-child(6) {
+    min-width: 90px;
+  }
+
+  th.col-status,
+  td:nth-child(7) {
     min-width: 90px;
   }
 
