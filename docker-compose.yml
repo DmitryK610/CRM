@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   frontend:
     build:
@@ -5,14 +7,14 @@ services:
       dockerfile: Dockerfile
     container_name: vue-frontend
     ports:
-      - "8080:80"
+      # Этот порт нужен, чтобы 1Panel мог проксировать запросы к фронтенду
+      - "8080:80" 
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-    # Убедитесь, что frontend дожидается backend, который в свою очередь дождется mysql-db
     depends_on:
       backend:
-        condition: service_healthy # <-- Правильно: frontend должен дождаться, пока backend будет готов
+        condition: service_healthy
     networks:
       - app-network
 
@@ -21,60 +23,34 @@ services:
       context: ./PythonProjectDkor/dkor_crm
       dockerfile: Dockerfile
     container_name: backend-api
-    ports:
-      - "8000:8000"
+    # Порт 8000 будет доступен внутри Docker, но не снаружи. 
+    # Это безопаснее, так как доступ пойдет через 1Panel.
+    expose:
+      - "8000"
     restart: unless-stopped
     env_file:
-      - ./.env # <--- Указывает на .env в корневой директории docker-compose.yml
-    environment:
-      - MYSQL_HOST=mysql-db # <-- Правильно: имя сервиса MySQL в Docker Compose
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_PORT=3306
+      - ./.env
     volumes:
-      - ./PythonProjectDkor/dkor_crm:/app
-      - ./PythonProjectDkor/dkor_crm/staticfiles:/app/staticfiles # <-- Правильно: монтируем статику
-    depends_on:
-      # Важно: backend должен дождаться, пока mysql-db станет здоровым
-      mysql-db:
-        condition: service_healthy # <-- Изменено: Используем service_healthy
+      # Том для кода больше не нужен в продакшене, 
+      # так как код копируется в образ при сборке.
+      # Оставляем только тома для статики и медиа.
+      - static_volume:/app/staticfiles
+      - media_volume:/app/mediafiles
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ping/"] # Предполагается, что у вас есть /health/ping/ endpoint
+      # Убедитесь, что эндпоинт /health/ping/ существует в вашем Django-проекте
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ping/"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s # Дайте Django время на запуск и инициализацию
-
-  mysql-db:
-    image: mysql:8.0
-    container_name: mysql-db
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - app-network
-    healthcheck: # <-- Добавлен healthcheck для MySQL
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
-      interval: 5s
-      timeout: 10s
-      retries: 5
-      start_period: 30s # Дайте MySQL достаточно времени для полной инициализации
-      # Важно: $ в MYSQL_USER и MYSQL_PASSWORD нужно экранировать как $$ внутри массива CMD
-      # из-за особенностей обработки переменных окружения в healthcheck.
+      start_period: 30s
 
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  mysql_data:
+  # Тома для статических и медиа файлов
+  static_volume:
+  media_volume:
