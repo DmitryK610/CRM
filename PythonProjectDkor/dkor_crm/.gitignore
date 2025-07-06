@@ -37,7 +37,7 @@ wheels/
 *.egg
 *.manifest
 *.spec
-
+.env
 # Logs and databases
 # ------------------
 *.log
