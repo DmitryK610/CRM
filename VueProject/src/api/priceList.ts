@@ -26,6 +26,13 @@ const defaultPriceList: PriceListFormData = {
   radius300To1000PerUnit: 1.0,
   verticalRadiusPerUnit: 1.0,
   twoPlaneProductPerUnit: 1.0,
+  baseMultiplier: 1.0,
+  coefficient0To300: 1.0,
+  coefficient300To340: 1.0,
+  coefficient340To380: 1.0,
+  coefficient380To500: 1.0,
+  coefficient500To550: 1.0,
+  coefficient550Plus: 1.0,
   lastSaved: new Date().toISOString(),
 }
 

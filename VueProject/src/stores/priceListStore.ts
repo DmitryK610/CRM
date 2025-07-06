@@ -48,14 +48,13 @@ export const usePriceListStore = defineStore('priceList', () => {
         radius300To1000PerUnit: 1.0,
         verticalRadiusPerUnit: 1.0,
         twoPlaneProductPerUnit: 1.0,
-        // Следующие поля были удалены, так как бэкенд их не ожидает
-        // baseMultiplier: 265.1,
-        // coefficient0To300: 1.0,
-        // coefficient300To340: 1.085,
-        // coefficient340To380: 1.15,
-        // coefficient380To500: 1.25,
-        // coefficient500To550: 1.5,
-        // coefficient550Plus: 1.6,
+        baseMultiplier: 265.1,
+        coefficient0To300: 1.0,
+        coefficient300To340: 1.085,
+        coefficient340To380: 1.15,
+        coefficient380To500: 1.25,
+        coefficient500To550: 1.5,
+        coefficient550Plus: 1.6,
       }
 
       priceList.value = defaultPriceList

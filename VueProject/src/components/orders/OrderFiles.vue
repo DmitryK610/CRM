@@ -133,9 +133,8 @@ const uploadFile = async () => {
       headers: {
         'Content-Type': 'multipart/form-data',
       } as Record<string, string>,
-      },
       onUploadProgress: (progressEvent) => {
-        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        const progress = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
         uploadProgress.value = progress;
       },
     });
@@ -149,7 +148,7 @@ const uploadFile = async () => {
         input.value = '';
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     uploadError.value = (err as Error).message || 'Ошибка при загрузке файла.';
   } finally {
     isLoading.value = false; // Сбросить флаг загрузки
@@ -157,7 +156,7 @@ const uploadFile = async () => {
 };
 
 const deleteFile = async (fileId: number) => {
-  if (!canDelete || !confirm('Вы уверены, что хотите удалить этот файл?')) {
+  if (!canDelete.value || !confirm('Вы уверены, что хотите удалить этот файл?')) {
     return;
   }
 
@@ -168,7 +167,7 @@ const deleteFile = async (fileId: number) => {
     // Замените '/api/orders/files/{fileId}/' на фактический URL вашего API для удаления файлов
     await api.delete(`/api/orders/files/${fileId}/`);
     files.value = files.value?.filter(file => file.id !== fileId) || [];
-  } catch (err: any) {
+  } catch (err: unknown) {
     error.value = (err as Error).message || 'Не удалось удалить файл.';
   } finally {
     isLoading.value = false; // Сбросить флаг загрузки

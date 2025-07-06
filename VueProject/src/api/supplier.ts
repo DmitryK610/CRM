@@ -10,7 +10,11 @@ const SUPPLIERS_ENDPOINT = '/api/suppliers/'; // Замените на факт�
  * @returns Промис с массивом поставщиков.
  */
 export async function getSuppliers<T>(): Promise<T> {
-  return api.get<T>(SUPPLIERS_ENDPOINT);
+  const response = await api.get<T | null>(SUPPLIERS_ENDPOINT);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -19,7 +23,11 @@ export async function getSuppliers<T>(): Promise<T> {
  * @returns Промис с информацией о поставщике.
  */
 export async function getSupplierById<T>(id: number): Promise<T> {
-  return api.get<T>(`${SUPPLIERS_ENDPOINT}${id}/`);
+  const response = await api.get<T | null>(`${SUPPLIERS_ENDPOINT}${id}/`);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -28,7 +36,11 @@ export async function getSupplierById<T>(id: number): Promise<T> {
  * @returns Промис с информацией о созданном поставщике.
  */
 export async function createSupplier<T, R>(supplierData: T): Promise<R> {
-  return api.post<T, R>(SUPPLIERS_ENDPOINT, supplierData);
+  const response = await api.post<T, R | null>(SUPPLIERS_ENDPOINT, supplierData);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -38,7 +50,11 @@ export async function createSupplier<T, R>(supplierData: T): Promise<R> {
  * @returns Промис с информацией об обновленном поставщике.
  */
 export async function updateSupplier<T, R>(id: number, supplierData: T): Promise<R> {
-  return api.put<T, R>(`${SUPPLIERS_ENDPOINT}${id}/`, supplierData);
+  const response = await api.put<T, R | null>(`${SUPPLIERS_ENDPOINT}${id}/`, supplierData);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -47,5 +63,5 @@ export async function updateSupplier<T, R>(id: number, supplierData: T): Promise
  * @returns Промис без тела ответа (в случае успеха).
  */
 export async function deleteSupplier(id: number): Promise<void> {
-  return api.delete(`${SUPPLIERS_ENDPOINT}${id}/`);
+  await api.delete(`${SUPPLIERS_ENDPOINT}${id}/`);
 }

@@ -37,6 +37,6 @@ urlpatterns = [
 
 
     path('api/login/', CustomObtainAuthToken.as_view(), name='api_login'),
-
+path('health/', include('healthcheck_app.urls')),
     path('login/', include('django.contrib.auth.urls')),
 ]

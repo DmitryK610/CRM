@@ -44,7 +44,7 @@ export const useCalculationStore = defineStore('calculation', () => {
     overlaySinkCutouts: 0,
     undermountSinkInstallations: 0,
     onSiteJoining: 0,
-    deliveryType: undefined,
+    deliveryType: 'city' as const,
     deliveryRequired: false,
     orderId: null,
     complexityAdditions: {
@@ -171,7 +171,7 @@ export const useCalculationStore = defineStore('calculation', () => {
         stoneName: rawForm.selectedMaterial?.color_code || '',
         dollarRate: materialStore.dollarRate,
         priceList: { ...cleanedPriceList } as PriceList,
-        deliveryType: rawForm.deliveryRequired ? rawForm.deliveryType : (undefined as any),
+        deliveryType: rawForm.deliveryRequired ? rawForm.deliveryType : 'city',
       }
 
       const result = await calculate(calculationForm)

@@ -96,8 +96,8 @@ interface OrderItemFormData {
 }
 
 const localItemData = ref<OrderItemFormData>({
-  id: props.item?.id,
-  _tempId: (props.item as any)?._tempId,
+  id: props.item?.id || undefined,
+  _tempId: (props.item as { _tempId?: number })?._tempId,
   product_name: props.item?.product_name || '',
   quantity: props.item?.quantity ?? null,
   unit_price: props.item?.unit_price ?? null,
@@ -176,8 +176,8 @@ const cancel = () => {
 
 watch(() => props.item, (newItem) => {
   localItemData.value = {
-    id: newItem?.id,
-    _tempId: (newItem as any)?._tempId,
+    id: newItem?.id || undefined,
+    _tempId: (newItem as { _tempId?: number })?._tempId,
     product_name: newItem?.product_name || '',
     quantity: newItem?.quantity ?? null,
     unit_price: newItem?.unit_price ?? null,

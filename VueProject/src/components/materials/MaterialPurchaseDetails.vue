@@ -8,7 +8,7 @@
     <div v-else-if="purchaseStore.fetchDetailsError" class="status-message error-message">
       <span class="error-icon">⚠️</span>
       <span class="error-text">Ошибка загрузки деталей закупки: {{ purchaseStore.fetchDetailsError }}</span>
-      <button @click="purchaseStore.fetchDetailsError = null" class="close-error-button" title="Закрыть">×</button>
+      <button @click="purchaseStore.clearFetchDetailsError()" class="close-error-button" title="Закрыть">×</button>
     </div>
     <div v-else-if="!purchaseDetails" class="status-message no-results-message">
       Детали закупки не найдены.

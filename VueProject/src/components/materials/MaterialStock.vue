@@ -25,11 +25,11 @@
             :class="{ 'invalid-field': formSubmitted && !currentItem.material }">
             <template #option="{ option }">
               <div class="option-content">
-                <span class="option-name"><strong>{{ option.material_name }} ({{ option.color_code }})</strong></span>
+                <span class="option-name"><strong>{{ (option as Material).material_name }} ({{ (option as Material).color_code }})</strong></span>
               </div>
             </template>
             <template #selected-option="{ option }">
-              <span v-if="option"><strong>{{ option.material_name }} ({{ option.color_code }})</strong></span>
+              <span v-if="option"><strong>{{ (option as Material).material_name }} ({{ (option as Material).color_code }})</strong></span>
               <span v-else>-- Выберите --</span>
             </template>
             <template #no-options="{ search, loading }">

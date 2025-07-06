@@ -368,6 +368,7 @@ onMounted(async () => {
         const selected = orderStore.selectedOrder;
         orderData.value = {
           ...selected,
+          calculation_id: selected.calculation || null,
           order_items: selected.order_items.map(item => ({
             ...item,
             quantity: item.quantity !== null ? Number(item.quantity) : null,

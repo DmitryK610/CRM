@@ -15,7 +15,7 @@ const CalculationDetailView = () => import('@/views/CalculationDetailView.vue')
 const MaterialsView = () => import('@/views/MaterialsView.vue')
 const SuppliersView = () => import('@/views/SuppliersView.vue')
 const EmployeesView = () => import('@/views/EmployeesView.vue')
-const FinancialView = () => import('@/views/FinancialView.vue')
+// const FinancialView = () => import('@/views/FinancialView.vue')
 const PriceListView = () => import('@/views/PriceListView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
@@ -158,11 +158,11 @@ export const routes: Array<RouteRecordRaw> = [
         component: EmployeesView,
       },
 
-      {
-        path: 'financial',
-        name: 'Financial',
-        component: FinancialView,
-      },
+      // {
+      //   path: 'financial',
+      //   name: 'Financial',
+      //   component: FinancialView,
+      // },
       {
         path: 'price-list',
         name: 'PriceList',

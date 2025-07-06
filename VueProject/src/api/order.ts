@@ -15,7 +15,11 @@ const ORDERS_ENDPOINT = '/api/orders/'; // Замените на фактиче�
 // Тип T здесь соответствует тому, что возвращает ваш API (массив Order[] или PaginatedResponse<Order>)
 export async function getOrders<T>(): Promise<T> {
  // Убедитесь, что этот эндпоинт возвращает список заказов
- return api.get<T>(ORDERS_ENDPOINT);
+ const response = await api.get<T | null>(ORDERS_ENDPOINT);
+ if (response === null) {
+   throw new Error('Received null response from API');
+ }
+ return response;
 }
 
 /**
@@ -25,7 +29,11 @@ export async function getOrders<T>(): Promise<T> {
  */
 export async function getOrderById(id: number | string): Promise<Order> {
  // Убедитесь, что этот эндпоинт возвращает один заказ
- return api.get<Order>(`${ORDERS_ENDPOINT}${id}/`);
+ const response = await api.get<Order | null>(`${ORDERS_ENDPOINT}${id}/`);
+ if (response === null) {
+   throw new Error('Received null response from API');
+ }
+ return response;
 }
 
 /**
@@ -53,7 +61,11 @@ export async function createOrder<T, R = Order>(orderData: T): Promise<R> {
 export async function updateOrder<T, R = Order>(id: number | string, orderData: T): Promise<R> {
  // Используйте PUT (для полной замены) или PATCH (для частичного обновления)
  // PATCH чаще подходит для обновления подмножества полей
- return api.patch<T, R>(`${ORDERS_ENDPOINT}${id}/`, orderData); // Или api.put
+ const response = await api.patch<T, R | null>(`${ORDERS_ENDPOINT}${id}/`, orderData); // Или api.put
+ if (response === null) {
+   throw new Error('Received null response from API');
+ }
+ return response;
 }
 
 /**
@@ -63,7 +75,7 @@ export async function updateOrder<T, R = Order>(id: number | string, orderData: 
  */
 export async function deleteOrder(id: number | string): Promise<void> {
  // Убедитесь, что этот эндпоинт и метод (DELETE) используются для удаления
- return api.delete(`${ORDERS_ENDPOINT}${id}/`);
+ await api.delete(`${ORDERS_ENDPOINT}${id}/`);
 }
 
 // --- НОВАЯ ФУНКЦИЯ: Обновление статуса заказа ---

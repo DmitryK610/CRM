@@ -15,7 +15,9 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
   const _isCreating = ref(false)
   const _isUpdating = ref(false)
   const _isDeleting = ref(false)
+  const _isFetchingDetails = ref(false)
   const _error = ref<string | null>(null)
+  const _fetchDetailsError = ref<string | null>(null)
 
   // --- Геттеры ---
   const procurementsList = computed(() => procurements.value)
@@ -23,7 +25,9 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
   const isCreating = computed(() => _isCreating.value)
   const isUpdating = computed(() => _isUpdating.value)
   const isDeleting = computed(() => _isDeleting.value)
+  const isFetchingDetails = computed(() => _isFetchingDetails.value)
   const error = computed(() => _error.value)
+  const fetchDetailsError = computed(() => _fetchDetailsError.value)
 
   const getPurchaseById = computed(() => (id: number) => {
     return procurements.value.find((p) => p.id === id) || null
@@ -148,6 +152,10 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     _error.value = null
   }
 
+  function clearFetchDetailsError(): void {
+    _fetchDetailsError.value = null
+  }
+
   return {
     // Состояния
     procurements,
@@ -158,7 +166,9 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     isCreating,
     isUpdating,
     isDeleting,
+    isFetchingDetails,
     error,
+    fetchDetailsError,
     getPurchaseById,
 
     // Действия
@@ -169,5 +179,6 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     deleteMaterialPurchase,
     setError,
     clearError,
+    clearFetchDetailsError,
   }
 })

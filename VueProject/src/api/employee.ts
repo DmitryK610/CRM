@@ -10,7 +10,11 @@ const EMPLOYEES_ENDPOINT = '/api/employees/'; // Замените на факт�
  * @returns Промис с массивом сотрудников.
  */
 export async function getEmployees<T>(): Promise<T> {
-  return api.get<T>(EMPLOYEES_ENDPOINT);
+  const response = await api.get<T | null>(EMPLOYEES_ENDPOINT);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -19,7 +23,11 @@ export async function getEmployees<T>(): Promise<T> {
  * @returns Промис с информацией о сотруднике.
  */
 export async function getEmployeeById<T>(id: number): Promise<T> {
-  return api.get<T>(`${EMPLOYEES_ENDPOINT}${id}/`);
+  const response = await api.get<T | null>(`${EMPLOYEES_ENDPOINT}${id}/`);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -28,7 +36,11 @@ export async function getEmployeeById<T>(id: number): Promise<T> {
  * @returns Промис с информацией о созданном сотруднике.
  */
 export async function createEmployee<T, R>(employeeData: T): Promise<R> {
-  return api.post<T, R>(EMPLOYEES_ENDPOINT, employeeData);
+  const response = await api.post<T, R | null>(EMPLOYEES_ENDPOINT, employeeData);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -38,7 +50,11 @@ export async function createEmployee<T, R>(employeeData: T): Promise<R> {
  * @returns Промис с информацией об обновленном сотруднике.
  */
 export async function updateEmployee<T, R>(id: number, employeeData: T): Promise<R> {
-  return api.put<T, R>(`${EMPLOYEES_ENDPOINT}${id}/`, employeeData);
+  const response = await api.put<T, R | null>(`${EMPLOYEES_ENDPOINT}${id}/`, employeeData);
+  if (response === null) {
+    throw new Error('Received null response from API');
+  }
+  return response;
 }
 
 /**
@@ -47,5 +63,5 @@ export async function updateEmployee<T, R>(id: number, employeeData: T): Promise
  * @returns Промис без тела ответа (в случае успеха).
  */
 export async function deleteEmployee(id: number): Promise<void> {
-  return api.delete(`${EMPLOYEES_ENDPOINT}${id}/`);
+  await api.delete(`${EMPLOYEES_ENDPOINT}${id}/`);
 }

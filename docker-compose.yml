@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   frontend:
     build:
@@ -10,37 +9,72 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-    # depends_on:
-    #   - backend
+    # Убедитесь, что frontend дожидается backend, который в свою очередь дождется mysql-db
+    depends_on:
+      backend:
+        condition: service_healthy # <-- Правильно: frontend должен дождаться, пока backend будет готов
+    networks:
+      - app-network
 
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: backend
-  #   ports:
-  #     - "8000:8000"
-  #   restart: unless-stopped
-  #   environment:
-  #     - ...
-  #   volumes:
-  #     - ./backend:/app/backend
-  #   depends_on:
-  #     - mysql
+  backend:
+    build:
+      context: ./PythonProjectDkor/dkor_crm
+      dockerfile: Dockerfile
+    container_name: backend-api
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - ./.env # <--- Указывает на .env в корневой директории docker-compose.yml
+    environment:
+      - MYSQL_HOST=mysql-db # <-- Правильно: имя сервиса MySQL в Docker Compose
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_PORT=3306
+    volumes:
+      - ./PythonProjectDkor/dkor_crm:/app
+      - ./PythonProjectDkor/dkor_crm/staticfiles:/app/staticfiles # <-- Правильно: монтируем статику
+    depends_on:
+      # Важно: backend должен дождаться, пока mysql-db станет здоровым
+      mysql-db:
+        condition: service_healthy # <-- Изменено: Используем service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ping/"] # Предполагается, что у вас есть /health/ping/ endpoint
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s # Дайте Django время на запуск и инициализацию
 
-  mysql:
+  mysql-db:
     image: mysql:8.0
     container_name: mysql-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: your_db
-      MYSQL_USER: your_user
-      MYSQL_PASSWORD: your_password
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck: # <-- Добавлен healthcheck для MySQL
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 30s # Дайте MySQL достаточно времени для полной инициализации
+      # Важно: $ в MYSQL_USER и MYSQL_PASSWORD нужно экранировать как $$ внутри массива CMD
+      # из-за особенностей обработки переменных окружения в healthcheck.
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   mysql_data:
