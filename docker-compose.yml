@@ -28,11 +28,8 @@ services:
     env_file:
       - ./.env
     volumes:
-      # Том для кода больше не нужен в продакшене,
-      # так как код копируется в образ при сборке.
-      # Оставляем только тома для статики и медиа.
-      - static_volume:/app/staticfiles
-      - media_volume:/app/mediafiles
+      - ./data/staticfiles:/app/staticfiles # Для прямого обслуживания Nginx
+      - ./data/mediafiles:/app/mediafiles   # Для прямого обслуживания Nginx
     networks:
       - app-network
     # Добавляем возможность доступа к host network для MySQL
