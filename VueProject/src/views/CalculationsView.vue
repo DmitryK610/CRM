@@ -115,7 +115,7 @@
           </div>
           <ul v-else>
             <li v-for="attachment in attachmentsForCurrentCalculation" :key="attachment.id" class="attachment-item">
-              <a :href="attachment.file" target="_blank" :download="attachment.file_name || 'attachment'">
+              <a :href="attachment.file || '#'" target="_blank" :download="attachment.file_name || 'attachment'">
                 {{ attachment.file_name || 'Файл ID: ' + attachment.id }}
               </a>
               <span v-if="attachment.description"> - {{ attachment.description }}</span>

@@ -38,6 +38,9 @@ services:
       - media_volume:/app/mediafiles
     networks:
       - app-network
+    # Добавляем возможность доступа к host network для MySQL
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       # Убедитесь, что эндпоинт /health/ping/ существует в вашем Django-проекте
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/ping/"]

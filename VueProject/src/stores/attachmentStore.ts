@@ -2,6 +2,12 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import type { Attachment } from '@/types/attachment'
+import { API_BASE_URL } from '@/utils/api'
+
+// Настройка базового URL для axios
+const api = axios.create({
+  baseURL: API_BASE_URL
+})
 
 export const useAttachmentStore = defineStore('attachmentStore', {
   state: () => ({
@@ -22,7 +28,7 @@ export const useAttachmentStore = defineStore('attachmentStore', {
       this.isLoadingAttachments = true
       this.attachmentError = null
       try {
-        const response = await axios.get<Attachment[]>(`/api/attachments/?order=${orderId}`)
+        const response = await api.get<Attachment[]>(`/api/attachments/?order=${orderId}`)
 
         if (Array.isArray(response.data)) {
           this.orderAttachments.set(orderId, response.data)
@@ -45,7 +51,7 @@ export const useAttachmentStore = defineStore('attachmentStore', {
       this.isLoadingAttachments = true
       this.attachmentError = null
       try {
-        const response = await axios.get<Attachment[]>(
+        const response = await api.get<Attachment[]>(
           `/api/attachments/?calculation=${calculationId}`,
         )
 
@@ -84,7 +90,7 @@ export const useAttachmentStore = defineStore('attachmentStore', {
           formData.append('description', description)
         }
 
-        const response = await axios.post<Attachment>('/api/attachments/', formData, {
+        const response = await api.post<Attachment>('/api/attachments/', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -109,7 +115,7 @@ export const useAttachmentStore = defineStore('attachmentStore', {
       this.isDeletingAttachment = true
       this.attachmentError = null
       try {
-        await axios.delete(`/api/attachments/${attachmentId}/`)
+        await api.delete(`/api/attachments/${attachmentId}/`)
 
         // Удаляем из обеих карт (заказы и расчеты)
         for (const attachments of this.orderAttachments.values()) {

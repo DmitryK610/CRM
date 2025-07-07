@@ -104,6 +104,14 @@ if DEBUG:
     ]
 # --- Конец статических файлов ---
 
+# --- Медиа файлы (загружаемые пользователем) ---
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Создаем папку media, если она не существует
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {

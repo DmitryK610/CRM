@@ -109,7 +109,7 @@
           </div>
           <ul v-else>
             <li v-for="attachment in attachmentsForCurrentOrder" :key="attachment.id" class="attachment-item">
-              <a :href="attachment.file" target="_blank" :download="attachment.file_name || 'attachment'">
+              <a :href="attachment.file || '#'" target="_blank" :download="attachment.file_name || 'attachment'">
                 {{ attachment.file_name || 'Файл ID: ' + attachment.id }}
               </a>
               <span v-if="attachment.description"> - {{ attachment.description }}</span>
@@ -219,7 +219,7 @@ const ordersWithDetails = computed((): OrderWithDetails[] => {
       ? clientsMap.get(clientId)
       : undefined;
 
-    const materialId: number | null | undefined = (order as any).material;
+    const materialId: number | null | undefined = (order as Order).material;
 
     const material = materialId !== undefined && materialId !== null && typeof materialId === 'number'
       ? materialsMap.get(materialId)
@@ -257,8 +257,8 @@ const sortedAndFilteredOrders = computed(() => {
   if (sortKey.value) {
     const key = sortKey.value;
     result.sort((a, b) => {
-      let valA = a[key] as any ?? '';
-      let valB = b[key] as any ?? '';
+      let valA = a[key] as string | number ?? '';
+      let valB = b[key] as string | number ?? '';
 
       if (['order_date'].includes(key as string)) {
         valA = a[key as keyof Order] ? new Date(a[key as keyof Order] as string).getTime() : 0;
@@ -387,7 +387,7 @@ const formatCurrency = (value: number | string | undefined | null): string => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
     });
-  } catch (e) {
+  } catch {
     return `${numValue} ₽`;
   }
 };
@@ -448,7 +448,7 @@ const handleAttachmentDelete = async (attachmentId: number) => {
   attachmentStore.attachmentError = null;
   try {
     await attachmentStore.deleteAttachment(attachmentId);
-  } catch (error) {
+  } catch {
   }
 };
 

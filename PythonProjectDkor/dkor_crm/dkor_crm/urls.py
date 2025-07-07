@@ -18,6 +18,8 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 # --- ДОБАВЬТЕ ЭТИ СТРОКИ ---
 # Убедитесь, что импортируете obtain_auth_token для использования его в CustomObtainAuthToken,
@@ -40,3 +42,8 @@ urlpatterns = [
 path('health/', include('healthcheck_app.urls')),
     path('login/', include('django.contrib.auth.urls')),
 ]
+
+# Обслуживание медиа-файлов в режиме разработки
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

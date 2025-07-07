@@ -1,11 +1,56 @@
 from rest_framework import serializers
 from decimal import Decimal
 from django.utils.timezone import now
+from django.conf import settings
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
     Order, OrderItem, Payment, HistoryItem, UserProfile, Attachment,
     MaterialPurchase, PriceList
 )
+
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для вложений (файлов).
+    Поддерживает загрузку файлов как для заказов, так и для расчетов.
+    """
+    file_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Attachment
+        fields = [
+            'id', 'order', 'calculation', 'file', 'file_url', 'description', 
+            'file_name', 'file_size', 'mime_type', 'uploaded_at'
+        ]
+        read_only_fields = ('id', 'uploaded_at', 'file_name', 'file_size', 'mime_type')
+    
+    def get_file_url(self, obj):
+        """Возвращает полный URL для файла"""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+    
+    def validate(self, data):
+        """
+        Проверяем, что вложение связано либо с заказом, либо с расчетом, но не с обоими.
+        """
+        order = data.get('order')
+        calculation = data.get('calculation')
+        
+        if not order and not calculation:
+            raise serializers.ValidationError(
+                "Вложение должно быть связано либо с заказом, либо с расчетом."
+            )
+        
+        if order and calculation:
+            raise serializers.ValidationError(
+                "Вложение не может быть связано одновременно с заказом и расчетом."
+            )
+        
+        return data
 
 
 class SupplierSerializer(serializers.ModelSerializer):
@@ -349,14 +394,3 @@ class HistoryItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'action_description', 'user', 'action_timestamp', 'content_type', 'object_id']
         read_only_fields = ['id', 'action_timestamp', 'user', 'content_type', 'object_id']
 
-
-class AttachmentSerializer(serializers.ModelSerializer):
-    file = serializers.FileField(use_url=True)
-
-    class Meta:
-        model = Attachment
-        fields = [
-            'id', 'order', 'file', 'description', 'uploaded_at',
-            'file_name', 'file_size', 'mime_type',
-        ]
-        read_only_fields = ['uploaded_at', 'file_name', 'file_size', 'mime_type']

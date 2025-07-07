@@ -504,7 +504,12 @@ class UserProfile(models.Model):
 
 
 class Attachment(models.Model):
-    order = models.ForeignKey(Order, verbose_name=_("Order"), on_delete=models.CASCADE, related_name='attachments')
+    # Делаем поле order необязательным и добавляем поле для расчетов
+    order = models.ForeignKey(Order, verbose_name=_("Order"), on_delete=models.CASCADE, 
+                             related_name='attachments', null=True, blank=True)
+    calculation = models.ForeignKey('Calculation', verbose_name=_("Calculation"), 
+                                   on_delete=models.CASCADE, related_name='attachments', 
+                                   null=True, blank=True)
     file = FileField(verbose_name=_("File"), upload_to='uploads/attachments/')
     description = models.TextField(verbose_name=_("Description"), blank=True, null=True)
     file_name = models.CharField(verbose_name=_("File Name"), max_length=255, blank=True, null=True)
@@ -519,6 +524,17 @@ class Attachment(models.Model):
         verbose_name = _("Вложение")
         verbose_name_plural = _("Вложения")
         ordering = ['-uploaded_at']
+        # Ограничение: вложение должно быть связано либо с заказом, либо с расчетом
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(order__isnull=False) | models.Q(calculation__isnull=False),
+                name='attachment_must_have_order_or_calculation'
+            ),
+            models.CheckConstraint(
+                check=~(models.Q(order__isnull=False) & models.Q(calculation__isnull=False)),
+                name='attachment_cannot_have_both_order_and_calculation'
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.file and hasattr(self.file, 'file') and isinstance(self.file.file, UploadedFile):
@@ -544,7 +560,12 @@ class Attachment(models.Model):
                 storage.delete(path)
         super().delete(*args, **kwargs)
 
-
+    @property
+    def file_url(self):
+        """Возвращает полный URL для файла"""
+        if self.file:
+            return self.file.url
+        return None
 # Define functions for default JSON values
 def get_default_delivery_type():
     return {"city": "1.00", "outside_city": "1.00"}

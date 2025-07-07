@@ -1,4 +1,3 @@
-
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
@@ -440,25 +439,69 @@ class MaterialPurchaseViewSet(viewsets.ModelViewSet):
 
 
 class AttachmentViewSet(viewsets.ModelViewSet):
-    queryset = Attachment.objects.select_related('order').all()
+    """
+    ViewSet для управления вложениями (файлами).
+    Поддерживает загрузку файлов как для заказов, так и для расчетов.
+    """
+    queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
-    filter_backends = [SearchFilter, OrderingFilter]
-    search_fields = [
-        'file_name', 'description', 'mime_type',
-        'order__order_number', 'order__client__full_name'
-    ]
-    ordering_fields = ['uploaded_at', 'file_name', 'file_size', 'order__order_number']
-    pagination_class = StandardPagination
-
+    # Убираем аутентификацию для упрощения работы
+    # permission_classes = [IsAuthenticated]
+    
     def get_queryset(self):
+        """
+        Фильтруем вложения по заказам или расчетам.
+        """
         queryset = super().get_queryset()
-        order_id = self.request.query_params.get('order_id', None)
-
-        if order_id is not None:
-            try:
-                order_id = int(order_id)
-                queryset = queryset.filter(order_id=order_id)
-            except ValueError:
-                queryset = queryset.none()
-
-        return queryset
+        
+        # Фильтр по заказу
+        order_id = self.request.query_params.get('order')
+        if order_id:
+            queryset = queryset.filter(order_id=order_id)
+        
+        # Фильтр по расчету
+        calculation_id = self.request.query_params.get('calculation')
+        if calculation_id:
+            queryset = queryset.filter(calculation_id=calculation_id)
+            
+        return queryset.order_by('-uploaded_at')
+    
+    def perform_create(self, serializer):
+        """
+        Сохраняем вложение с дополнительной логикой.
+        """
+        # Можно добавить логику для добавления пользователя, если нужно
+        # serializer.save(uploaded_by=self.request.user)
+        serializer.save()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Переопределяем создание для лучшей обработки ошибок.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            return Response(
+                {
+                    'error': 'Ошибка при загрузке файла',
+                    'details': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Переопределяем удаление для лучшей обработки ошибок.
+        """
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {'error': f'Ошибка при удалении файла: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
