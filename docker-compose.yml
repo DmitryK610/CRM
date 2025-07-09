@@ -4,9 +4,9 @@ services:
       context: ./VueProject
       dockerfile: Dockerfile
     container_name: vue-frontend
-    # Убираем внешние порты - доступ только через OpenResty
-    expose:
-      - "80"
+    # Пробрасываем порты наружу для доступа OpenResty
+    ports:
+      - "8080:80"
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -18,9 +18,9 @@ services:
       context: ./PythonProjectDkor/dkor_crm
       dockerfile: Dockerfile
     container_name: backend-api
-    # Убираем внешние порты - доступ только через OpenResty
-    expose:
-      - "8000"
+    # Пробрасываем порты наружу для доступа OpenResty
+    ports:
+      - "8000:8000"
     restart: unless-stopped
     env_file:
       - ./.env

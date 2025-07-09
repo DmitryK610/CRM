@@ -2,10 +2,9 @@
 
 /**
  * Базовый URL для API бэкенда.
- * Автоматически определяется на основе переменных окружения.
+ * Используем относительный путь для работы через OpenResty proxy.
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? '' : 'http://127.0.0.1:8000')
+export const API_BASE_URL = '/api' // Все API-запросы идут через OpenResty по пути /api/
 
 /**
  * Функция для получения токена из хранилища (например, localStorage).
