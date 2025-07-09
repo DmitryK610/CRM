@@ -24,7 +24,11 @@ python manage.py migrate
 
 # Собираем статические файлы
 echo "📁 Собираем статические файлы..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+
+# Проверяем что статические файлы собрались
+echo "🔍 Проверяем статические файлы..."
+ls -la /app/staticfiles/admin/ | head -5
 
 echo "🎉 Backend готов к запуску!"
 
