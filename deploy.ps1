@@ -149,9 +149,8 @@ function Invoke-Migrations {
 
 # Сбор статических файлов
 function Invoke-CollectStatic {
-    Write-Info "Собираем статические файлы..."
-    docker-compose exec -T backend python manage.py collectstatic --noinput
-    Write-Success "Статические файлы собраны"
+    Write-Info "Статические файлы уже собраны во время сборки образа"
+    Write-Success "Статические файлы готовы"
 }
 
 # Создание суперпользователя

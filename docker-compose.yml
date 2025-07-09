@@ -19,6 +19,16 @@ services:
     build:
       context: ./PythonProjectDkor/dkor_crm
       dockerfile: Dockerfile
+      args:
+        # Передаем переменные окружения для сборки
+        - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+        - DJANGO_DEBUG=${DJANGO_DEBUG}
+        - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+        - MYSQL_DATABASE=${MYSQL_DATABASE}
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+        - MYSQL_HOST=${MYSQL_HOST}
+        - MYSQL_PORT=${MYSQL_PORT}
     container_name: backend-api
     ports:
       - "8000:8000"  # Бэкенд доступен на порту 8000

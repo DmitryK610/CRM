@@ -145,9 +145,8 @@ apply_migrations() {
 
 # Сбор статических файлов
 collect_static() {
-    info "Собираем статические файлы..."
-    docker-compose exec -T backend python manage.py collectstatic --noinput
-    success "Статические файлы собраны"
+    info "Статические файлы уже собраны во время сборки образа"
+    success "Статические файлы готовы"
 }
 
 # Создание суперпользователя
