@@ -5,8 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: vue-frontend
     ports:
-      # Этот порт нужен, чтобы 1Panel мог проксировать запросы к фронтенду
-      - "8080:80"
+      - "8080:80"  # Фронтенд доступен на порту 8080
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -21,33 +20,30 @@ services:
       context: ./PythonProjectDkor/dkor_crm
       dockerfile: Dockerfile
     container_name: backend-api
-    # ИСПРАВЛЕНИЕ: Заменили 'expose' на 'ports', чтобы открыть 8000 порт на хост-машине
     ports:
-      - "8000:8000" # Теперь порт 8000 будет доступен напрямую извне VPS
+      - "8000:8000"  # Бэкенд доступен на порту 8000
     restart: unless-stopped
     env_file:
       - ./.env
     volumes:
-      - ./data/staticfiles:/app/staticfiles # Для прямого обслуживания Nginx
-      - ./data/mediafiles:/app/mediafiles   # Для прямого обслуживания Nginx
+      # Создаем volumes для статических и медиа файлов
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     networks:
       - app-network
-    # Добавляем возможность доступа к host network для MySQL
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     healthcheck:
-      # Убедитесь, что эндпоинт /health/ping/ существует в вашем Django-проекте
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/ping/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  static_volume:
+  media_volume:
 
 networks:
   app-network:
     driver: bridge
 
-volumes:
-  # Тома для статических и медиа файлов
-  static_volume:
-  media_volume:
+

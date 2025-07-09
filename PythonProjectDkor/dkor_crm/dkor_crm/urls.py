@@ -34,16 +34,17 @@ from crm.views import CustomObtainAuthToken
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
     path('api/', include('crm.urls')),
-
-
     path('api/login/', CustomObtainAuthToken.as_view(), name='api_login'),
-path('health/', include('healthcheck_app.urls')),
+    path('health/', include('healthcheck_app.urls')),
     path('login/', include('django.contrib.auth.urls')),
 ]
 
-# Обслуживание медиа-файлов в режиме разработки
+# Обслуживание медиа файлов в продакшен (через Django)
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # В продакшен также добавляем для обработки через Django
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

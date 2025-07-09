@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=dkor_crm.settings \
     PIP_NO_CACHE_DIR=1
 
-# Устанавливаем системные зависимости
+# Устанавливаем системные зависимости, необходимые для компиляции некоторых Python-пакетов
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         gcc \
@@ -15,35 +15,42 @@ RUN apt-get update && \
         default-libmysqlclient-dev \
         pkg-config \
         curl \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/* # Очистка кэша после установки
 
-# Создаем пользователя приложения
+# Создаем пользователя приложения для повышения безопасности
 RUN useradd -m appuser && mkdir /app && chown appuser:appuser /app
 
 WORKDIR /app
 
-# Копируем зависимости
+# Копируем файл зависимостей
 COPY --chown=appuser:appuser requirements.txt .
 
-# Устанавливаем зависимости
+# Устанавливаем зависимости Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Копируем приложение
+# Копируем весь код вашего приложения
 COPY --chown=appuser:appuser . .
 
-# Проверка структуры проекта (для отладки)
-RUN ["ls", "-la", "/app/dkor_crm"]
+# Проверка структуры проекта (может быть полезно для отладки, но не обязательно)
+# RUN ["ls", "-la", "/app/dkor_crm"]
 
-# Переключаем пользователя
+# !!! ДОБАВЛЕНА ЭТА СТРОКА !!!
+# Создаем директории для статических и медиа файлов
+RUN mkdir -p /app/staticfiles /app/media && chown -R appuser:appuser /app/staticfiles /app/media
+
+# Собираем статические файлы Django. Они будут помещены в STATIC_ROOT.
+RUN python manage.py collectstatic --noinput
+
+# Переключаем пользователя на созданного 'appuser'
 USER appuser
 
-# Открываем порт
+# Открываем порт, который прослушивает Gunicorn
 EXPOSE 8000
 
-# Healthcheck
+# Healthcheck для Docker Compose
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Команда запуска
+# Команда запуска Gunicorn (WSGI-сервер для Django)
 CMD ["gunicorn", "dkor_crm.wsgi:application", "--bind", "0.0.0.0:8000"]
