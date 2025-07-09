@@ -22,6 +22,10 @@ python manage.py migrate --check 2>/dev/null || {
 echo "🗄️ Применяем миграции..."
 python manage.py migrate
 
+# Собираем статические файлы
+echo "📁 Собираем статические файлы..."
+python manage.py collectstatic --noinput
+
 echo "🎉 Backend готов к запуску!"
 
 # Запускаем Gunicorn

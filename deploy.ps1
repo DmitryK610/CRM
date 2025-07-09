@@ -149,7 +149,7 @@ function Invoke-Migrations {
 
 # Сбор статических файлов
 function Invoke-CollectStatic {
-    Write-Info "Статические файлы уже собраны во время сборки образа"
+    Write-Info "Статические файлы собираются автоматически при запуске контейнера"
     Write-Success "Статические файлы готовы"
 }
 

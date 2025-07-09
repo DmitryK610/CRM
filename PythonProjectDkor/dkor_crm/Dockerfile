@@ -7,26 +7,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=dkor_crm.settings \
     PIP_NO_CACHE_DIR=1
 
-# Принимаем build args для переменных окружения
-ARG DJANGO_SECRET_KEY
-ARG DJANGO_DEBUG=False
-ARG DJANGO_ALLOWED_HOSTS
-ARG MYSQL_DATABASE
-ARG MYSQL_USER
-ARG MYSQL_PASSWORD
-ARG MYSQL_HOST
-ARG MYSQL_PORT
-
-# Устанавливаем переменные окружения из build args (только для сборки)
-ENV DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-ENV DJANGO_DEBUG=${DJANGO_DEBUG}
-ENV DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
-ENV MYSQL_DATABASE=${MYSQL_DATABASE}
-ENV MYSQL_USER=${MYSQL_USER}
-ENV MYSQL_PASSWORD=${MYSQL_PASSWORD}
-ENV MYSQL_HOST=${MYSQL_HOST}
-ENV MYSQL_PORT=${MYSQL_PORT}
-
 # Устанавливаем системные зависимости, необходимые для компиляции некоторых Python-пакетов
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -59,8 +39,8 @@ COPY --chown=appuser:appuser . .
 # Создаем директории для статических и медиа файлов
 RUN mkdir -p /app/staticfiles /app/media && chown -R appuser:appuser /app/staticfiles /app/media
 
-# Собираем статические файлы Django (теперь переменные окружения доступны)
-RUN python manage.py collectstatic --noinput
+# Убираем collectstatic из Dockerfile - будем выполнять в runtime через entrypoint
+# когда все переменные окружения будут доступны из .env файла
 
 # Копируем entrypoint скрипт
 COPY --chown=appuser:appuser entrypoint.sh /app/entrypoint.sh
