@@ -3,12 +3,8 @@
     <div class="login-container">
       <h1>Вход в приложение</h1>
 
-      <div v-if="authStore.isLoading" class="loading-message">
-        Выполняется вход...
-      </div>
-
-      <div v-if="authStore.error" class="error-message">
-        Ошибка входа: {{ authStore.error }}
+      <div v-if="showError" class="error-message">
+        Неверные данные для входа. Проверьте логин и пароль.
       </div>
 
       <form @submit.prevent="submitLogin" class="login-form">
@@ -24,9 +20,8 @@
             placeholder="Введите ваш пароль">
         </div>
 
-        <button type="submit" class="btn btn-primary" :disabled="authStore.isLoading">
-          <span v-if="!authStore.isLoading">Войти</span>
-          <span v-else>Загрузка...</span>
+        <button type="submit" class="btn btn-primary">
+          Войти
         </button>
       </form>
     </div>
@@ -40,15 +35,17 @@ import { useAuthStore } from '@/stores';
 
 const username = ref('');
 const password = ref('');
+const showError = ref(false);
 const router = useRouter();
 const authStore = useAuthStore();
 
 const submitLogin = async () => {
+  showError.value = false;
   try {
     await authStore.login(username.value, password.value);
     router.push('/');
   } catch {
-    // Обработка ошибок уже внутри стора
+    showError.value = true;
   }
 };
 </script>
@@ -165,8 +162,7 @@ label {
   display: inline-block;
 }
 
-.error-message,
-.loading-message {
+.error-message {
   padding: 12px 16px;
   border-radius: 8px;
   margin: 0 auto 20px auto;
@@ -178,52 +174,8 @@ label {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-}
-
-.error-message {
   color: #d32f2f;
   background-color: #ffebee;
-}
-
-.loading-message {
-  color: #1976d2;
-  background-color: #e3f2fd;
-}
-
-.loading-message::before {
-  content: '';
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 4px solid rgba(200, 200, 200, 0.3);
-  border-top: 4px solid #1976d2;
-  border-radius: 50%;
-  animation: spin 1s linear infinite, pulse-shadow 1.5s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse-shadow {
-  0% {
-    box-shadow: 0 0 5px rgba(25, 118, 210, 0.4);
-  }
-
-  50% {
-    box-shadow: 0 0 15px rgba(25, 118, 210, 0.8);
-  }
-
-  100% {
-    box-shadow: 0 0 5px rgba(25, 118, 210, 0.4);
-  }
+  border: 1px solid #f5c6cb;
 }
 </style>
