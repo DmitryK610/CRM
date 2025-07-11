@@ -38,7 +38,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('crm.urls')),
     path('api/login/', CustomObtainAuthToken.as_view(), name='api_login'),
-    path('health/', include('healthcheck_app.urls')),
+    path('api/health/', include('healthcheck_app.urls')),  # Для фронтенда
+    path('health/', include('healthcheck_app.urls')),      # Для прямых проверок
     path('login/', include('django.contrib.auth.urls')),
 ]
 
