@@ -34,11 +34,7 @@ USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Указывает, что HTTPS обрабатывается прокси.
 
-# Доверенные источники для CSRF-защиты (Cross-Site Request Forgery).
-# Django будет принимать POST-запросы только от этих источников.
-# ОБЯЗАТЕЛЬНО включите сюда все URL, с которых ваш фронтенд будет обращаться к бэкенду,
-# включая IP-адрес с портом (для разработки/отладки), а также домены с HTTP и HTTPS.
-TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://185.237.95.34,**http://185.237.95.34:8080**,http://crm.ru,http://dkor.pro,http://www.dkor.pro').split(',')
+TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34,http://185.237.95.34:8080,http://crm.ru,http://dkor.pro,http://www.dkor.pro').split(',')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in TRUSTED_ORIGINS_STR if origin.strip()]
 
 # =====================================================
@@ -76,10 +72,7 @@ ROOT_URLCONF = 'dkor_crm.urls'
 # CORS настройки (Cross-Origin Resource Sharing)
 # =====================================================
 
-# Разрешенные origins для CORS.
-# Браузер разрешит запросы от JavaScript-кода, запущенного на этих доменах/IP.
-# Должны включать все URL, с которых ваш фронтенд будет обращаться к бэкенду.
-CORS_ALLOWED_ORIGINS_STR = os.getenv('CORS_ALLOWED_ORIGINS', 'http://185.237.95.34:8080,http://185.237.95.34,http://crm.ru,http://dkor.pro,http://www.dkor.pro,http://localhost:5173').split(',')
+CORS_ALLOWED_ORIGINS_STR = os.getenv('CORS_ALLOWED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34:8080,http://185.237.95.34,http://crm.ru,http://dkor.pro,http://www.dkor.pro,http://localhost:5173').split(',')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR if origin.strip()]
 
 # Не разрешать все источники по умолчанию. True только для разработки!
@@ -238,23 +231,24 @@ REST_FRAMEWORK = {
 # Настройки безопасности
 # =====================================================
 
-# Настройки Cookies. SAMESITE='Lax' для современных браузеров.
-# SECURE=False пока нет HTTPS. ОБЯЗАТЕЛЬНО поменять на True при переходе на HTTPS.
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = True # Запрещает доступ JS к сессионным кукам
-CSRF_COOKIE_HTTPONLY = False # Разрешает доступ JS к CSRF-куке (необходимо для фронтенда)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 
 # Настройки безопасности заголовков HTTP.
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'SAMEORIGIN' # Защита от кликджекинга
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
-# НЕ включать HSTS и другие HTTPS-зависимые настройки без настроенного SSL.
-# SECURE_SSL_REDIRECT = False
-# SECURE_HSTS_SECONDS = 0
+# Включить редирект на HTTPS
+SECURE_SSL_REDIRECT = True
+# Включить HSTS
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 # =====================================================
 # Логирование
