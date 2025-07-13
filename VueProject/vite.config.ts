@@ -18,8 +18,9 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000', // Замените на адрес и порт вашего Django-сервера, если он другой
+        target: 'https://dkor.pro', // Production: use your domain with HTTPS
         changeOrigin: true,
+        secure: true,
         // rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

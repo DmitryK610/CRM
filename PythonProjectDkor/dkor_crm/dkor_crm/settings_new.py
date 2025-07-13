@@ -9,32 +9,27 @@ from decouple import config
 # Базовые настройки
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Секретный ключ - ОБЯЗАТЕЛЬНО используйте переменную окружения в production!
-# Например, через .env файл или переменные окружения Docker.
+# Секретный ключ - ОБЯЗАТЕЛЬНО используйте переменную окружения в production
 SECRET_KEY = config('DJANGO_SECRET_KEY')
 
-# Режим отладки - ОБЯЗАТЕЛЬНО False в production!
-# Установите в True только для локальной разработки.
+# Режим отладки - ОБЯЗАТЕЛЬНО False в production
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 # =====================================================
 # Настройки хостов и прокси
 # =====================================================
 
-# Разрешенные хосты для Django.
-# Это домены/IP, которые Django будет принимать в заголовке Host.
-# Включает IP с портом для прямого доступа к фронтенду.
-ALLOWED_HOSTS_STR = os.getenv('DJANGO_ALLOWED_HOSTS', '185.237.95.34,localhost,127.0.0.1,crm.ru,backend,dkor.pro,www.dkor.pro,185.237.95.34:8080').split(',')
+# Разрешенные хосты для Django
+ALLOWED_HOSTS_STR = os.getenv('DJANGO_ALLOWED_HOSTS', '185.237.95.34,localhost,127.0.0.1,crm.ru,backend,dkor.pro,www.dkor.pro').split(',')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR if host.strip()]
 
-# Настройки для работы за reverse proxy (OpenResty/Nginx)
-# Эти параметры говорят Django доверять заголовкам X-Forwarded-*,
-# которые передает прокси-сервер.
+# Настройки для работы за reverse proxy (OpenResty)
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Указывает, что HTTPS обрабатывается прокси.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34,http://185.237.95.34:8080,http://crm.ru,http://dkor.pro,http://www.dkor.pro').split(',')
+# Доверие прокси заголовкам
+TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://185.237.95.34,http://crm.ru,http://dkor.pro,http://www.dkor.pro').split(',')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in TRUSTED_ORIGINS_STR if origin.strip()]
 
 # =====================================================
@@ -42,7 +37,7 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in TRUSTED_ORIGINS_STR if orig
 # =====================================================
 
 INSTALLED_APPS = [
-    'corsheaders', # Важно: должен быть перед остальными приложениями для CORS
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'django.contrib.admin',
@@ -57,7 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # Важно: должен быть перед CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,19 +64,19 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'dkor_crm.urls'
 
 # =====================================================
-# CORS настройки (Cross-Origin Resource Sharing)
+# CORS настройки для работы с OpenResty
 # =====================================================
 
-CORS_ALLOWED_ORIGINS_STR = os.getenv('CORS_ALLOWED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34:8080,http://185.237.95.34,http://crm.ru,http://dkor.pro,http://www.dkor.pro,http://localhost:5173').split(',')
+# Разрешенные origins для CORS
+CORS_ALLOWED_ORIGINS_STR = os.getenv('CORS_ALLOWED_ORIGINS', 'http://185.237.95.34,http://crm.ru,http://dkor.pro,http://www.dkor.pro,http://localhost:5173').split(',')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR if origin.strip()]
 
-# Не разрешать все источники по умолчанию. True только для разработки!
+# Основные CORS настройки
 CORS_ALLOW_ALL_ORIGINS = False
-# Разрешить передачу куков и заголовков авторизации при кросс-доменных запросах.
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken', 'Authorization']
 
-# Разрешенные методы HTTP для CORS
+# Разрешенные методы HTTP
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -91,7 +86,7 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# Разрешенные заголовки для CORS (включая прокси заголовки)
+# Разрешенные заголовки (включая прокси заголовки)
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -108,7 +103,7 @@ CORS_ALLOW_HEADERS = [
     'x-real-ip',
 ]
 
-CORS_PREFLIGHT_MAX_AGE = 86400 # Кеширование предзапросов CORS на 24 часа
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 # =====================================================
 # Шаблоны
@@ -142,7 +137,7 @@ DATABASES = {
         "NAME": config('MYSQL_DATABASE', default='dkor_db'),
         "USER": config('MYSQL_USER', default='Admin'),
         "PASSWORD": config('MYSQL_PASSWORD', default='KotKompot'),
-        "HOST": config('MYSQL_HOST', default='185.237.95.34'), # Используйте имя сервиса Docker, если база в Docker-сети: 'db' или 'mysql'
+        "HOST": config('MYSQL_HOST', default='185.237.95.34'),
         "PORT": config('MYSQL_PORT', default='3306'),
         "OPTIONS": {
             "charset": "utf8mb4",
@@ -150,10 +145,6 @@ DATABASES = {
         }
     }
 }
-# Примечание: Для "HOST" в настройках БД, если ваш MySQL запущен в Docker-сети и
-# доступен по имени сервиса (например, 'db' или 'mysql'), используйте это имя сервиса.
-# Если вы используете IP хост-машины, то текущая настройка '185.237.95.34' верна,
-# но убедитесь, что ваш MySQL также доступен на этом IP и порту 3306.
 
 # =====================================================
 # Валидация паролей
@@ -214,41 +205,39 @@ if DEBUG:
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny', # Разрешить доступ для всех (для некоторых API)
+        'rest_framework.permissions.AllowAny',  # Для CRM можно разрешить доступ
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication', # Для аутентификации по токену
-        'rest_framework.authentication.SessionAuthentication', # Для аутентификации по сессиям (например, для админки)
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer', # Ответы в формате JSON
+        'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 50, # Размер страницы для пагинации по умолчанию
+    'PAGE_SIZE': 50,
 }
 
 # =====================================================
 # Настройки безопасности
 # =====================================================
 
+# Cookies настройки
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False  # True когда добавите HTTPS
+CSRF_COOKIE_SECURE = False     # True когда добавите HTTPS
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = False   # Нужно для frontend доступа
 
-# Настройки безопасности заголовков HTTP.
+# Настройки безопасности (без проблемных заголовков)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
-# Включить редирект на HTTPS
-SECURE_SSL_REDIRECT = True
-# Включить HSTS
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# НЕ добавляем HSTS и другие HTTPS-зависимые настройки без SSL
+# SECURE_SSL_REDIRECT = False  # Не перенаправляем на HTTPS
+# SECURE_HSTS_SECONDS = 0      # Отключено для HTTP
 
 # =====================================================
 # Логирование
@@ -289,8 +278,8 @@ LOGGING = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Размер загружаемых файлов
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880 # 5MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880 # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 
 # Таймауты
 EMAIL_TIMEOUT = 60
