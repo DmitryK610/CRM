@@ -1,12 +1,13 @@
-# Инструкция по развертыванию на VPS сервере
+# Инструкция по развертыванию на VPS сервере с HTTPS
 
 ## Архитектура развертывания
 
-1. **OpenResty (nginx)** - на порту 80 (главный прокси)
+1. **Nginx/OpenResty** - на портах 80 (редирект) и 443 (HTTPS)
 2. **MySQL** - на порту 3306 (база данных)
-3. **Docker Compose** с двумя контейнерами:
-   - **Frontend** (Vue.js + nginx) - порт 8080
-   - **Backend** (Django + Gunicorn) - порт 8000
+3. **Let's Encrypt** - автоматические SSL сертификаты
+4. **Docker Compose** с двумя контейнерами:
+   - **Frontend** (Vue.js + nginx) - localhost:8080
+   - **Backend** (Django + Gunicorn) - localhost:8000
 
 ## Подготовка сервера
 
@@ -47,20 +48,41 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-### 3. Настройте OpenResty/Nginx
+### 3. Настройте Nginx/OpenResty с SSL
 ```bash
-# Установите OpenResty или Nginx
+# Установите Nginx
 sudo apt install nginx -y
 
+# Установите Certbot для SSL сертификатов
+sudo apt install snapd -y
+sudo snap install core; sudo snap refresh core
+sudo snap install --classic certbot
+sudo ln -sf /snap/bin/certbot /usr/bin/certbot
+
+# Создайте директорию для challenge
+sudo mkdir -p /var/www/certbot
+
 # Скопируйте конфигурацию
-sudo cp nginx.conf /etc/nginx/sites-available/dkor.pro
+sudo cp openresty.conf /etc/nginx/sites-available/dkor.pro
 sudo ln -s /etc/nginx/sites-available/dkor.pro /etc/nginx/sites-enabled/
 sudo rm /etc/nginx/sites-enabled/default
+
+# Получите SSL сертификат (замените на ваш домен)
+sudo certbot certonly --webroot \
+    --webroot-path=/var/www/certbot \
+    --email admin@dkor.pro \
+    --agree-tos \
+    --no-eff-email \
+    -d dkor.pro \
+    -d www.dkor.pro
 
 # Проверьте конфигурацию и перезапустите
 sudo nginx -t
 sudo systemctl restart nginx
 sudo systemctl enable nginx
+
+# Настройте автоматическое обновление сертификата
+sudo crontab -l | { cat; echo "0 12 * * * /usr/bin/certbot renew --quiet && systemctl reload nginx"; } | sudo crontab -
 ```
 
 ## Развертывание приложения
@@ -101,10 +123,11 @@ docker-compose exec backend python manage.py createsuperuser
 ```
 
 ### 5. Проверьте работоспособность
-- Фронтенд: http://dkor.pro
-- API: http://dkor.pro/api/
-- Админ панель: http://dkor.pro/admin/
-- Healthcheck: http://dkor.pro/health/ping/
+- Фронтенд: https://dkor.pro
+- API: https://dkor.pro/api/
+- Админ панель: https://dkor.pro/admin/
+- Healthcheck: https://dkor.pro/health/ping/
+- HTTP автоматически перенаправляется на HTTPS
 
 ## Обслуживание
 
@@ -156,6 +179,33 @@ docker stats
 
 ### Автоматический перезапуск
 Контейнеры настроены с `restart: unless-stopped`, поэтому они автоматически перезапустятся при сбое или перезагрузке сервера.
+
+## Безопасность и SSL
+
+### Настройка файрвола
+```bash
+# Активируем UFW
+sudo ufw enable
+
+# Разрешаем SSH (ВАЖНО: сделайте это ПЕРВЫМ!)
+sudo ufw allow ssh
+
+# Разрешаем HTTP и HTTPS
+sudo ufw allow 80
+sudo ufw allow 443
+
+# Запрещаем прямой доступ к Docker портам
+sudo ufw deny 8000
+sudo ufw deny 8080
+
+# Проверяем статус
+sudo ufw status verbose
+```
+
+### SSL сертификаты
+- Сертификаты обновляются автоматически через cron
+- Проверка: `sudo certbot renew --dry-run`
+- Статус: `sudo certbot certificates`
 
 ## Решение проблем
 
