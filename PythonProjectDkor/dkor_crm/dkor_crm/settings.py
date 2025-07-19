@@ -34,7 +34,7 @@ USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Указывает, что HTTPS обрабатывается прокси.
 
-TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34,http://185.237.95.34:8080,http://crm.ru,http://dkor.pro,http://www.dkor.pro').split(',')
+TRUSTED_ORIGINS_STR = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://dkor.pro,https://www.dkor.pro,http://185.237.95.34').split(',')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in TRUSTED_ORIGINS_STR if origin.strip()]
 
 # =====================================================

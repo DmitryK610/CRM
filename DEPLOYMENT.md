@@ -113,10 +113,13 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### 4. Выполните миграции и создайте суперпользователя
+### 4. Выполните миграции и соберите статические файлы
 ```bash
 # Выполняем миграции
 docker-compose exec backend python manage.py migrate
+
+# Собираем статические файлы Django (важно для HTTPS)
+docker-compose exec backend python manage.py collectstatic --noinput
 
 # Создаем суперпользователя
 docker-compose exec backend python manage.py createsuperuser
