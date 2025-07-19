@@ -55,11 +55,12 @@ const submitLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #8d9baa 0%, #5c6a77 100%);
   padding: 20px;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 .login-container {
@@ -67,11 +68,13 @@ const submitLogin = async () => {
   padding: 35px 45px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  width: 100%;
+  width: 400px;
   max-width: 400px;
+  min-width: 400px;
   text-align: center;
   backdrop-filter: blur(5px);
   border: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 h1 {
@@ -165,9 +168,8 @@ label {
 .error-message {
   padding: 12px 16px;
   border-radius: 8px;
-  margin: 0 auto 20px auto;
-  max-width: 400px;
-  width: 100%;
+  margin-bottom: 20px;
+  width: calc(100% - 32px);
   box-sizing: border-box;
   font-size: 14px;
   font-weight: 500;
@@ -177,5 +179,30 @@ label {
   color: #d32f2f;
   background-color: #ffebee;
   border: 1px solid #f5c6cb;
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-height: 40px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 480px) {
+  .login-view {
+    padding: 10px;
+  }
+  
+  .login-container {
+    width: 100%;
+    max-width: 350px;
+    min-width: 280px;
+    padding: 25px 30px;
+  }
+  
+  .error-message {
+    width: calc(100% - 20px);
+    font-size: 13px;
+    top: -60px;
+  }
 }
 </style>
