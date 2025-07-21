@@ -107,7 +107,7 @@ CORS_ALLOW_HEADERS = [
     'x-forwarded-host',
     'x-real-ip',
 ]
-
+FORCE_SCRIPT_NAME = '/api'
 CORS_PREFLIGHT_MAX_AGE = 86400 # Кеширование предзапросов CORS на 24 часа
 
 # =====================================================
