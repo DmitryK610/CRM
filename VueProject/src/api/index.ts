@@ -31,6 +31,10 @@ export const api = {
     const response = await instance.put<R>(normalizeUrl(url), data, config);
     return response.data;
   },
+  patch: async <T, R>(url: string, data: T, config?: AxiosRequestConfig): Promise<R> => {
+    const response = await instance.patch<R>(normalizeUrl(url), data, config);
+    return response.data;
+  },
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     const response = await instance.delete<T>(normalizeUrl(url), config);
     return response.data;

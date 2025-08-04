@@ -11,149 +11,179 @@
     <form @submit.prevent="handleSave">
       <h2>Редактор прайс-листа</h2>
 
-      <fieldset>
-        <legend>Базовые услуги (за шт./услугу)</legend>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="measurement">Замер</label>
-            <input id="measurement" v-model.number="formData.measurement" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="deliveryCity">Доставка (в городе)</label>
-            <input id="deliveryCity" v-model.number="formData.deliveryType.city" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="deliveryOutside">Доставка (за городом)</label>
-            <input id="deliveryOutside" v-model.number="formData.deliveryType.outside_city" type="number" step="0.01" />
+      <!-- Базовые услуги -->
+      <div class="accordion-section">
+        <div class="accordion-header" @click="toggleSection('basic')" :class="{ active: openSections.basic }">
+          <h3>Базовые услуги (за шт./услугу)</h3>
+          <span class="accordion-icon">{{ openSections.basic ? '−' : '+' }}</span>
+        </div>
+        <div class="accordion-content" :class="{ open: openSections.basic }">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="measurement">Замер</label>
+              <input id="measurement" v-model.number="formData.measurement" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="deliveryCity">Доставка (в городе)</label>
+              <input id="deliveryCity" v-model.number="formData.deliveryType.city" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="deliveryOutside">Доставка (за городом)</label>
+              <input id="deliveryOutside" v-model.number="formData.deliveryType.outside_city" type="number" step="0.01" />
+            </div>
           </div>
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset>
-        <legend>Работы (за м.п.)</legend>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="surfaceBondingPerM">Склейка поверхностей</label>
-            <input id="surfaceBondingPerM" v-model.number="formData.surfaceBondingPerM" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="edgeTypeRadius">Кромка (радиус)</label>
-            <input id="edgeTypeRadius" v-model.number="formData.edgeTypePerM.radius" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="edgeTypeFigured">Кромка (фигурная)</label>
-            <input id="edgeTypeFigured" v-model.number="formData.edgeTypePerM.figured" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="drainageTypeOverlay">Водоотбойник (накладной)</label>
-            <input id="drainageTypeOverlay" v-model.number="formData.drainageTypePerM.overlay" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="drainageTypeIntegrated">Водоотбойник (интегрированный)</label>
-            <input id="drainageTypeIntegrated" v-model.number="formData.drainageTypePerM.integrated" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="frontBendPerM">Подгиб</label>
-            <input id="frontBendPerM" v-model.number="formData.frontBendPerM" type="number" step="0.01" />
+      <!-- Работы за м.п. -->
+      <div class="accordion-section">
+        <div class="accordion-header" @click="toggleSection('perMeter')" :class="{ active: openSections.perMeter }">
+          <h3>Работы (за м.п.)</h3>
+          <span class="accordion-icon">{{ openSections.perMeter ? '−' : '+' }}</span>
+        </div>
+        <div class="accordion-content" :class="{ open: openSections.perMeter }">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="surfaceBondingPerM">Склейка поверхностей</label>
+              <input id="surfaceBondingPerM" v-model.number="formData.surfaceBondingPerM" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="edgeTypeRadius">Кромка (радиус)</label>
+              <input id="edgeTypeRadius" v-model.number="formData.edgeTypePerM.radius" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="edgeTypeFigured">Кромка (фигурная)</label>
+              <input id="edgeTypeFigured" v-model.number="formData.edgeTypePerM.figured" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="drainageTypeOverlay">Водоотбойник (накладной)</label>
+              <input id="drainageTypeOverlay" v-model.number="formData.drainageTypePerM.overlay" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="drainageTypeIntegrated">Водоотбойник (интегрированный)</label>
+              <input id="drainageTypeIntegrated" v-model.number="formData.drainageTypePerM.integrated" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="frontBendPerM">Подгиб</label>
+              <input id="frontBendPerM" v-model.number="formData.frontBendPerM" type="number" step="0.01" />
+            </div>
           </div>
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset>
-        <legend>Работы (за шт.)</legend>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="ventilationHolePerUnit">Вентиляционные отверстия</label>
-            <input id="ventilationHolePerUnit" v-model.number="formData.ventilationHolePerUnit" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="cooktopCutoutPerUnit">Выпил под варочную панель</label>
-            <input id="cooktopCutoutPerUnit" v-model.number="formData.cooktopCutoutPerUnit" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="overlaySinkCutoutPerUnit">Выпил под накладную мойку</label>
-            <input id="overlaySinkCutoutPerUnit" v-model.number="formData.overlaySinkCutoutPerUnit" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="undermountSinkInstallationPerUnit">Вклейка мойки подстольного монтажа</label>
-            <input id="undermountSinkInstallationPerUnit" v-model.number="formData.undermountSinkInstallationPerUnit"
-              type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="onSiteJoiningPerUnit">Стыковка на объекте</label>
-            <input id="onSiteJoiningPerUnit" v-model.number="formData.onSiteJoiningPerUnit" type="number" step="0.01" />
+      <!-- Работы за шт. -->
+      <div class="accordion-section">
+        <div class="accordion-header" @click="toggleSection('perUnit')" :class="{ active: openSections.perUnit }">
+          <h3>Работы (за шт.)</h3>
+          <span class="accordion-icon">{{ openSections.perUnit ? '−' : '+' }}</span>
+        </div>
+        <div class="accordion-content" :class="{ open: openSections.perUnit }">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="ventilationHolePerUnit">Вентиляционные отверстия</label>
+              <input id="ventilationHolePerUnit" v-model.number="formData.ventilationHolePerUnit" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="cooktopCutoutPerUnit">Выпил под варочную панель</label>
+              <input id="cooktopCutoutPerUnit" v-model.number="formData.cooktopCutoutPerUnit" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="overlaySinkCutoutPerUnit">Выпил под накладную мойку</label>
+              <input id="overlaySinkCutoutPerUnit" v-model.number="formData.overlaySinkCutoutPerUnit" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="undermountSinkInstallationPerUnit">Вклейка мойки подстольного монтажа</label>
+              <input id="undermountSinkInstallationPerUnit" v-model.number="formData.undermountSinkInstallationPerUnit"
+                type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="onSiteJoiningPerUnit">Стыковка на объекте</label>
+              <input id="onSiteJoiningPerUnit" v-model.number="formData.onSiteJoiningPerUnit" type="number" step="0.01" />
+            </div>
           </div>
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset>
-        <legend>Сложность (за шт.)</legend>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="radius10To300PerUnit">Радиус 10-300мм</label>
-            <input id="radius10To300PerUnit" v-model.number="formData.radius10To300PerUnit" type="number" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="radius300To1000PerUnit">Радиус 300-1000мм</label>
-            <input id="radius300To1000PerUnit" v-model.number="formData.radius300To1000PerUnit" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="verticalRadiusPerUnit">Вертикальный радиус</label>
-            <input id="verticalRadiusPerUnit" v-model.number="formData.verticalRadiusPerUnit" type="number"
-              step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="twoPlaneProductPerUnit">Изделие в 2х плоскостях</label>
-            <input id="twoPlaneProductPerUnit" v-model.number="formData.twoPlaneProductPerUnit" type="number"
-              step="0.01" />
+      <!-- Сложность -->
+      <div class="accordion-section">
+        <div class="accordion-header" @click="toggleSection('complexity')" :class="{ active: openSections.complexity }">
+          <h3>Сложность (за шт.)</h3>
+          <span class="accordion-icon">{{ openSections.complexity ? '−' : '+' }}</span>
+        </div>
+        <div class="accordion-content" :class="{ open: openSections.complexity }">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="radius10To300PerUnit">Радиус 10-300мм</label>
+              <input id="radius10To300PerUnit" v-model.number="formData.radius10To300PerUnit" type="number" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="radius300To1000PerUnit">Радиус 300-1000мм</label>
+              <input id="radius300To1000PerUnit" v-model.number="formData.radius300To1000PerUnit" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="verticalRadiusPerUnit">Вертикальный радиус</label>
+              <input id="verticalRadiusPerUnit" v-model.number="formData.verticalRadiusPerUnit" type="number"
+                step="0.01" />
+            </div>
+            <div class="form-group">
+              <label for="twoPlaneProductPerUnit">Изделие в 2х плоскостях</label>
+              <input id="twoPlaneProductPerUnit" v-model.number="formData.twoPlaneProductPerUnit" type="number"
+                step="0.01" />
+            </div>
           </div>
         </div>
-        <legend>Коэффициенты расчета стоимости</legend>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="baseMultiplier">Базовый множитель</label>
-            <input id="baseMultiplier" v-model.number="formData.baseMultiplier" type="number" step="0.01" />
-            <small>Изначально был 265.1</small>
-          </div>
-          <div class="form-group">
-            <label for="coefficient0To300">Коэф. (цена $ до 300)</label>
-            <input id="coefficient0To300" v-model.number="formData.coefficient0To300" type="number" step="0.001" />
-          </div>
-          <div class="form-group">
-            <label for="coefficient300To340">Коэф. (цена $ 300-340)</label>
-            <input id="coefficient300To340" v-model.number="formData.coefficient300To340" type="number" step="0.001" />
-          </div>
-          <div class="form-group">
-            <label for="coefficient340To380">Коэф. (цена $ 340-380)</label>
-            <input id="coefficient340To380" v-model.number="formData.coefficient340To380" type="number" step="0.001" />
-          </div>
-          <div class="form-group">
-            <label for="coefficient380To500">Коэф. (цена $ 380-500)</label>
-            <input id="coefficient380To500" v-model.number="formData.coefficient380To500" type="number" step="0.001" />
-          </div>
-          <div class="form-group">
-            <label for="coefficient500To550">Коэф. (цена $ 500-550)</label>
-            <input id="coefficient500To550" v-model.number="formData.coefficient500To550" type="number" step="0.001" />
-          </div>
-          <div class="form-group">
-            <label for="coefficient550Plus">Коэф. (цена $ от 550)</label>
-            <input id="coefficient550Plus" v-model.number="formData.coefficient550Plus" type="number" step="0.001" />
+      </div>
+
+      <!-- Коэффициенты -->
+      <div class="accordion-section">
+        <div class="accordion-header" @click="toggleSection('coefficients')" :class="{ active: openSections.coefficients }">
+          <h3>Коэффициенты расчета стоимости</h3>
+          <span class="accordion-icon">{{ openSections.coefficients ? '−' : '+' }}</span>
+        </div>
+        <div class="accordion-content" :class="{ open: openSections.coefficients }">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="baseMultiplier">Базовый множитель</label>
+              <input id="baseMultiplier" v-model.number="formData.baseMultiplier" type="number" step="0.01" />
+              <small>Изначально был 265.1</small>
+            </div>
+            <div class="form-group">
+              <label for="coefficient0To300">Коэф. (цена $ до 300)</label>
+              <input id="coefficient0To300" v-model.number="formData.coefficient0To300" type="number" step="0.001" />
+            </div>
+            <div class="form-group">
+              <label for="coefficient300To340">Коэф. (цена $ 300-340)</label>
+              <input id="coefficient300To340" v-model.number="formData.coefficient300To340" type="number" step="0.001" />
+            </div>
+            <div class="form-group">
+              <label for="coefficient340To380">Коэф. (цена $ 340-380)</label>
+              <input id="coefficient340To380" v-model.number="formData.coefficient340To380" type="number" step="0.001" />
+            </div>
+            <div class="form-group">
+              <label for="coefficient380To500">Коэф. (цена $ 380-500)</label>
+              <input id="coefficient380To500" v-model.number="formData.coefficient380To500" type="number" step="0.001" />
+            </div>
+            <div class="form-group">
+              <label for="coefficient500To550">Коэф. (цена $ 500-550)</label>
+              <input id="coefficient500To550" v-model.number="formData.coefficient500To550" type="number" step="0.001" />
+            </div>
+            <div class="form-group">
+              <label for="coefficient550Plus">Коэф. (цена $ от 550)</label>
+              <input id="coefficient550Plus" v-model.number="formData.coefficient550Plus" type="number" step="0.001" />
+            </div>
           </div>
         </div>
-      </fieldset>
+      </div>
 
 
       <div class="form-actions">
         <button type="submit" class="save-button" :disabled="loading">
           {{ loading ? 'Сохранение...' : 'Сохранить изменения' }}
-        </button>
-        <button type="button" class="reset-button" @click="handleReset" :disabled="loading">
-          Сбросить по умолчанию
         </button>
       </div>
       <p v-if="formData.lastSaved" class="last-saved">
@@ -171,6 +201,20 @@ import type { PriceListFormData } from '@/types'
 
 const priceListStore = usePriceListStore()
 const { priceList, loading, error } = storeToRefs(priceListStore)
+
+// Состояние для управления аккордеоном
+const openSections = ref({
+  basic: true,  // Базовые услуги открыты по умолчанию
+  perMeter: false,
+  perUnit: false,
+  complexity: false,
+  coefficients: false
+})
+
+// Функция для переключения секций аккордеона
+const toggleSection = (section: keyof typeof openSections.value) => {
+  openSections.value[section] = !openSections.value[section]
+}
 
 // Функция для создания объекта по умолчанию (соответствует Django модели)
 const createDefaultFormData = (): PriceListFormData => ({
@@ -240,26 +284,23 @@ const handleSave = async () => {
   }
 }
 
-const handleReset = async () => {
-  if (confirm('Вы уверены, что хотите сбросить все цены к значениям по умолчанию?')) {
-    await priceListStore.resetToDefaults()
-  }
-}
-
 const clearError = () => {
   priceListStore.clearError();
 }
 </script>
 
 <style scoped>
-/* Стили из CalculationForm - общие стили контейнера */
+/* Стили контейнера в соответствии с проектом */
 .price-list-editor-container {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 20px auto;
-  font-family: 'Arial', sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
-  background-color: #f9fafb;
+  background-color: #f4f4f4;
+  min-height: auto; /* Убираем любые ограничения высоты */
+  height: auto; /* Позволяем контейнеру расширяться */
+  overflow: visible; /* Убираем скроллинг */
 }
 
 .form-group small {
@@ -272,8 +313,8 @@ h2 {
   color: #007bff;
   font-size: 2rem;
   font-weight: 600;
-  text-align: center;
   margin-bottom: 25px;
+  text-align: center;
 }
 
 form {
@@ -281,22 +322,71 @@ form {
   padding: 25px;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  height: auto; /* Позволяем форме расширяться */
+  overflow: visible; /* Убираем скроллинг */
 }
 
-/* Стили fieldset - применены стили из CalculationForm */
-fieldset {
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  padding: 20px;
-  margin-bottom: 20px;
+/* Стили аккордеона без внешней рамки */
+.accordion-section {
+  margin-bottom: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.accordion-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.accordion-header:hover {
+  background-color: #e9ecef;
+}
+
+.accordion-header.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.accordion-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.accordion-icon {
+  font-size: 1.5rem;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+  min-width: 20px;
+  text-align: center;
+}
+
+.accordion-header.active .accordion-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  display: none; /* Скрываем закрытый контент */
   background-color: #f8f9fa;
 }
 
-legend {
-  font-weight: 600;
-  color: #007bff;
-  padding: 0 8px;
-  font-size: 1.1rem;
+.accordion-content.open {
+  display: block; /* Показываем открытый контент */
+  padding: 20px;
 }
 
 /* Сетка форм - один столбец */
@@ -316,7 +406,7 @@ legend {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #555;
+  color: #333;
   font-size: 0.9rem;
 }
 
@@ -328,7 +418,7 @@ legend {
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 1rem;
-  color: #495057;
+  color: #333;
   background-color: #fff;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
@@ -350,8 +440,7 @@ legend {
   flex-wrap: wrap;
 }
 
-.save-button,
-.reset-button {
+.save-button {
   padding: 10px 20px;
   font-size: 1rem;
   border-radius: 4px;
@@ -362,9 +451,6 @@ legend {
   justify-content: center;
   text-decoration: none;
   min-width: 120px;
-}
-
-.save-button {
   background-color: #007bff;
   color: white;
   border: 1px solid #007bff;
@@ -376,22 +462,6 @@ legend {
 }
 
 .save-button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.reset-button {
-  background-color: #dc3545;
-  color: white;
-  border: 1px solid #dc3545;
-}
-
-.reset-button:hover:not(:disabled) {
-  background-color: #c82333;
-  border-color: #bd2130;
-}
-
-.reset-button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
@@ -455,7 +525,7 @@ legend {
   background-color: rgba(114, 28, 36, 0.1);
 }
 
-/* Адаптивность - из CalculationForm */
+/* Адаптивность */
 @media (max-width: 992px) {
   .price-list-editor-container {
     padding: 15px;
@@ -477,14 +547,24 @@ legend {
     align-items: stretch;
   }
 
-  .save-button,
-  .reset-button {
+  .save-button {
     width: 100%;
   }
 
-  fieldset {
-    padding: 15px;
-    margin-bottom: 15px;
+  .accordion-section {
+    margin-bottom: 12px;
+  }
+  
+  .accordion-header {
+    padding: 12px 16px;
+  }
+  
+  .accordion-header h3 {
+    font-size: 1rem;
+  }
+  
+  .accordion-content.open {
+    padding: 16px;
   }
 
   form {
@@ -506,12 +586,16 @@ legend {
     font-size: 0.9rem;
   }
 
-  fieldset {
-    padding: 12px;
+  .accordion-header {
+    padding: 10px 12px;
   }
-
-  legend {
-    font-size: 1rem;
+  
+  .accordion-header h3 {
+    font-size: 0.9rem;
+  }
+  
+  .accordion-content.open {
+    padding: 12px;
   }
 }
 </style>

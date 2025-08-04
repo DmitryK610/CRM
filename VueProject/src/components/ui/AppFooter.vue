@@ -1,7 +1,7 @@
 <template>
   <footer class="app-footer">
     <div class="container">
-      <p>&copy; {{ currentYear }} Все права защищены. Мое Приложение</p>
+      <p>&copy; {{ currentYear }} Все права защищены. CRM App</p>
       <nav>
         <router-link to="/privacy" class="footer-link">Политика конфиденциальности</router-link>
         <router-link to="/terms" class="footer-link">Условия использования</router-link>

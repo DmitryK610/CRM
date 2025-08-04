@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="container">
       <router-link to="/" class="logo">
-        <span>Мое Приложение</span>
+        <img src="/crm logo.png" alt="CRM Логотип" class="logo-image">
       </router-link>
 
       <nav>
@@ -11,7 +11,7 @@
         <router-link to="/clients" active-class="active">Клиенты</router-link>
         <router-link to="/calculations" active-class="active">Расчеты</router-link>
         <router-link to="/suppliers" active-class="active">Поставщики</router-link>
-        <router-link to="/employees" active-class="active">Сотрудники</router-link>
+        <!-- <router-link to="/employees" active-class="active">Сотрудники</router-link> -->
         <router-link to="/materials" active-class="active">Материалы</router-link>
         <!-- <router-link to="/financial" active-class="active">Финансы</router-link> -->
       </nav>

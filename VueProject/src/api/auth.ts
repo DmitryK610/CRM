@@ -19,7 +19,7 @@ export async function login(credentials: LoginRequest): Promise<AuthLoginRespons
     }
     return response
   } catch (error: any) {
-    console.error('Ошибка при запросе на вход:', error)
+    // console.error('Ошибка при запросе на вход:', error)
     throw error
   }
 }

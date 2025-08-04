@@ -36,7 +36,7 @@ async function handleApiResponse<T>(response: Response): Promise<T | null> {
         errorDetail = errorText || `Неизвестная ошибка (${response.status})`
       }
     } catch (e) {
-      console.error('Не удалось разобрать тело ошибки:', e)
+      // console.error('Не удалось разобрать тело ошибки:', e)
     }
 
     const error = new Error(`Ошибка API (${response.status}): ${errorDetail}`)
@@ -52,7 +52,7 @@ async function handleApiResponse<T>(response: Response): Promise<T | null> {
     const jsonResponse = response.clone()
     return (await jsonResponse.json()) as T
   } catch (e) {
-    console.error('Ошибка при парсинге JSON успешного ответа:', e, response)
+    // console.error('Ошибка при парсинге JSON успешного ответа:', e, response)
     return null
   }
 }

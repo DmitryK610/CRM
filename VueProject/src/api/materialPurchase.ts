@@ -1,7 +1,7 @@
 // src/api/materialPurchase.ts
 
-import axios from 'axios'; // Предполагается, что axios установлен и сконфигурирован (например, с базовым URL)
-import type { MaterialPurchase, MaterialPurchaseCreatePayload, MaterialPurchaseUpdatePayload } from '@/types/materialPurchase'; // Импортируем определенные вами типы
+import { api } from '@/utils/api'
+import type { MaterialPurchase, MaterialPurchaseCreatePayload, MaterialPurchaseUpdatePayload } from '@/types/materialPurchase'
 
 // Интерфейс для пагинированных ответов API (если ваш ViewSet использует пагинацию, как стандартно для DRF)
 interface PaginatedResponse<T> {
@@ -11,36 +11,51 @@ interface PaginatedResponse<T> {
     results: T[];
 }
 
-// URL базового эндпоинта для закупок материалов
-// Убедитесь, что этот путь соответствует вашим urls.py (например, '/api/material-purchases/')
-const API_URL = '/api/material-purchases/';
+const MATERIAL_PURCHASES_ENDPOINT = '/api/material-purchases/';
 
 // Функция для получения списка закупок материалов
-// Может принимать параметры для фильтрации, поиска или пагинации (например, { params: { order_id: 1, search: 'Гранит' } })
+// Может принимать параметры для фильтрации, поиска или пагинации
 export async function getMaterialPurchases<T = MaterialPurchase[] | PaginatedResponse<MaterialPurchase>>(params?: any): Promise<T> {
-    const response = await axios.get<T>(API_URL, { params });
-    return response.data;
+    let url = MATERIAL_PURCHASES_ENDPOINT;
+    if (params) {
+        const queryString = new URLSearchParams(params).toString();
+        url += `?${queryString}`;
+    }
+    const data = await api.get<T>(url);
+    if (data === null) {
+        throw new Error('Received null response from API');
+    }
+    return data;
 }
 
 // Функция для получения одной закупки материала по ID
 export async function getMaterialPurchase(id: number): Promise<MaterialPurchase> {
-    const response = await axios.get<MaterialPurchase>(`${API_URL}${id}/`);
-    return response.data;
+    const data = await api.get<MaterialPurchase>(`${MATERIAL_PURCHASES_ENDPOINT}${id}/`);
+    if (data === null) {
+        throw new Error('Received null response from API');
+    }
+    return data;
 }
 
 // Функция для создания новой закупки материала
 export async function createMaterialPurchase(payload: MaterialPurchaseCreatePayload): Promise<MaterialPurchase> {
-    const response = await axios.post<MaterialPurchase>(API_URL, payload);
-    return response.data;
+    const data = await api.post<MaterialPurchaseCreatePayload, MaterialPurchase>(MATERIAL_PURCHASES_ENDPOINT, payload);
+    if (data === null) {
+        throw new Error('Received null response from API');
+    }
+    return data;
 }
 
 // Функция для обновления существующей закупки материала по ID (используем PATCH для частичного обновления)
 export async function updateMaterialPurchase(id: number, payload: MaterialPurchaseUpdatePayload): Promise<MaterialPurchase> {
-    const response = await axios.patch<MaterialPurchase>(`${API_URL}${id}/`, payload);
-    return response.data;
+    const data = await api.patch<MaterialPurchaseUpdatePayload, MaterialPurchase>(`${MATERIAL_PURCHASES_ENDPOINT}${id}/`, payload);
+    if (data === null) {
+        throw new Error('Received null response from API');
+    }
+    return data;
 }
 
 // Функция для удаления закупки материала по ID
 export async function deleteMaterialPurchase(id: number): Promise<void> {
-    await axios.delete<void>(`${API_URL}${id}/`);
+    await api.delete(`${MATERIAL_PURCHASES_ENDPOINT}${id}/`);
 }

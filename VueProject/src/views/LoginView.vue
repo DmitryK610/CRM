@@ -55,7 +55,7 @@ const submitLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: 100%;
   background: linear-gradient(135deg, #8d9baa 0%, #5c6a77 100%);
   padding: 20px;
   box-sizing: border-box;
@@ -179,7 +179,7 @@ label {
   color: #d32f2f;
   background-color: #ffebee;
   border: 1px solid #f5c6cb;
-  position: absolute;
+  position: relative;
   top: -70px;
   left: 50%;
   transform: translateX(-50%);
