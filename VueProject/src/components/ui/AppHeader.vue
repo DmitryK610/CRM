@@ -92,7 +92,7 @@ const logout = async () => {
 }
 
 .logo-image {
-  height: 40px;
+  height: 50px;
   /* Фиксированная высота под хедер */
   width: auto;
   /* Автоматическая ширина для сохранения пропорций */
@@ -100,6 +100,7 @@ const logout = async () => {
   /* Максимальная ширина чтобы не растягивать хедер */
   object-fit: contain;
   /* Сохраняем пропорции изображения */
+  border-radius: 5px;
 }
 
 .logo span {
