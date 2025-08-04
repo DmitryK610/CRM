@@ -31,8 +31,8 @@ git stash 2>/dev/null || true
 git remote remove origin 2>/dev/null || true
 git remote add origin git@github.com:DmitryK610/CRM.git
 git fetch origin
-git reset --hard origin/main
-git pull origin main
+git reset --hard origin/development
+git pull origin development
 
 echo "🏗️ Пересобираем образы контейнеров..."
 # Пересобираем контейнеры без кеша
