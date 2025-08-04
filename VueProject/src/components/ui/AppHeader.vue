@@ -87,6 +87,19 @@ const logout = async () => {
   /* Сделаем чуть жирнее */
   flex-shrink: 0;
   /* Не сжимать логотип */
+  display: flex;
+  align-items: center;
+}
+
+.logo-image {
+  height: 40px;
+  /* Фиксированная высота под хедер */
+  width: auto;
+  /* Автоматическая ширина для сохранения пропорций */
+  max-width: 120px;
+  /* Максимальная ширина чтобы не растягивать хедер */
+  object-fit: contain;
+  /* Сохраняем пропорции изображения */
 }
 
 .logo span {
@@ -231,6 +244,12 @@ nav a.active {
     /* Корректируем размер лого */
   }
 
+  .logo-image {
+    height: 36px;
+    /* Уменьшаем высоту для планшетов */
+    max-width: 100px;
+  }
+
   .auth-section span {
     font-size: 15px;
     /* Корректируем размер шрифта */
@@ -351,6 +370,12 @@ nav a.active {
   .logo {
     font-size: 18px;
     /* Еще меньше лого */
+  }
+
+  .logo-image {
+    height: 32px;
+    /* Еще меньше для мобильных */
+    max-width: 80px;
   }
 
   .login-button,
