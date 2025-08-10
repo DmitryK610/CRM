@@ -1,4 +1,4 @@
-// router/index.ts
+
 
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -9,9 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
-  /**
-   * Массив конфигураций маршрутов, импортированный из ./routes.ts
-   */
+  
   routes: routes as Readonly<RouteRecordRaw[]>, // Приведение типа для строгости
 
   scrollBehavior(to, from, savedPosition) {

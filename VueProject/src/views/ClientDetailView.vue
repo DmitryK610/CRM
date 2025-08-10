@@ -1,238 +1,395 @@
 <template>
-  <div class="client-details-view">
-    <h1>Детали клиента</h1>
-    <div v-if="clientStore.getSelectedClient">
-      <div class="client-details-block">
-        <p v-if="clientStore.getSelectedClient.id"><strong>ID клиента:</strong> {{ clientStore.getSelectedClient.id }}
-        </p>
-        <p v-if="clientStore.getSelectedClient.full_name"><strong>Имя:</strong> {{
-          clientStore.getSelectedClient.full_name }}</p>
-        <p v-if="clientStore.getSelectedClient.email"><strong>Email:</strong> {{ clientStore.getSelectedClient.email }}
-        </p>
-        <p v-if="clientStore.getSelectedClient.contact_phone"><strong>Телефон:</strong> {{
-          clientStore.getSelectedClient.contact_phone }}</p>
-        <p v-if="clientStore.getSelectedClient.address"><strong>Адрес:</strong> {{ clientStore.getSelectedClient.address
-          }}</p>
-      </div>
-      <router-link to="/clients" class="back-link">Вернуться к списку клиентов</router-link>
+  <div class="client-list-view">
+    <div class="header-actions">
+      <h1>Клиенты</h1>
+      <button type="button" class="btn add-button" @click="openCreateClientModal" title="Добавить клиента">
+        <span class="material-symbols-outlined">add</span>
+      </button>
     </div>
-    <div v-else class="status-message no-results-message">Клиент не найден.</div>
+    <input
+      type="text"
+      v-model="searchInputValue"
+      placeholder="Поиск клиентов..."
+      @input="handleSearch(searchInputValue)"
+      class="search-input full-width-search"
+    />
+    <div v-if="clientStore.error" class="error-message">Ошибка загрузки клиентов: {{ clientStore.error }}</div>
+    <template v-else>
+      <div v-if="clientStore.getClients && clientStore.getClients.length > 0">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-id">№</th>
+                <th class="col-name">Имя</th>
+                <th class="col-email">Email</th>
+                <th class="col-phone">Телефон</th>
+                <th class="col-address">Адрес</th>
+                <th class="col-actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="client in clientStore.getClients" :key="client.id">
+                <td>{{ client.id }}</td>
+                <td>{{ client.full_name }}</td>
+                <td>{{ client.email }}</td>
+                <td>{{ client.contact_phone }}</td>
+                <td>{{ client.address }}</td>
+                <td class="actions-cell">
+                  <div class="action-links-container">
+                    <button @click="openEditClientModal(client.id)" class="btn btn-warning" title="Редактировать">
+                      <span class="material-symbols-outlined">edit</span>
+                      <span class="btn-text">Редактировать</span>
+                    </button>
+                    <button @click="openClientDetailModal(client.id)" class="btn btn-primary" title="Подробнее">
+                      <span class="material-symbols-outlined">visibility</span>
+                      <span class="btn-text">Подробнее</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Client create/edit modal -->
+        <app-modal :is-open="isClientFormOpen" @close="closeClientFormModal" :title="clientFormTitle">
+          <ClientForm :isModal="true" :modalClientId="clientFormClientId" @close="closeClientFormModal" @saved="handleClientSaved" />
+        </app-modal>
+
+        <!-- Client detail modal -->
+        <app-modal :is-open="isClientDetailOpen" @close="closeClientDetailModal" title="Детали клиента">
+          <ClientDetailView :isModal="true" :modalClientId="clientDetailId" @close="closeClientDetailModal" />
+        </app-modal>
+      </div>
+      <div v-else class="no-results-message">
+        Нет доступных клиентов.
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useClientStore } from '@/stores';
-import { useRoute } from 'vue-router';
+import AppModal from '@/components/ui/AppModal.vue';
+import ClientForm from '@/components/clients/ClientForm.vue';
+import ClientDetailView from '@/views/ClientDetailView.vue';
 
 const clientStore = useClientStore();
-const route = useRoute();
-const clientId = route.params.id ? Number(route.params.id) : null;
 
-onMounted(async () => {
-  if (clientId) {
-    await clientStore.fetchClientById(clientId);
-  } else {
-    console.error('ID клиента отсутствует в параметрах маршрута.');
-  }
+
+const isClientFormOpen = ref(false);
+const clientFormClientId = ref<number | null>(null);
+const isClientDetailOpen = ref(false);
+const clientDetailId = ref<number | null>(null);
+const clientFormTitle = computed(() => clientFormClientId.value ? 'Редактировать данные клиента' : 'Добавить клиента');
+
+const openCreateClientModal = () => { clientFormClientId.value = null; isClientFormOpen.value = true; };
+const openEditClientModal = (id: number) => { clientFormClientId.value = id; isClientFormOpen.value = true; };
+const closeClientFormModal = () => { isClientFormOpen.value = false; };
+const handleClientSaved = async () => { isClientFormOpen.value = false; await fetchClients(); };
+
+const openClientDetailModal = (id: number) => { clientDetailId.value = id; isClientDetailOpen.value = true; };
+const closeClientDetailModal = () => { isClientDetailOpen.value = false; clientDetailId.value = null; };
+
+const searchQuery = ref('');
+const searchInputValue = ref('');
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  fetchClients();
+};
+
+const fetchClients = async () => {
+  await clientStore.fetchClients(searchQuery.value);
+};
+
+onMounted(() => {
+  fetchClients();
 });
 </script>
 
 <style scoped>
-.client-details-view {
-  padding: 20px;
-  max-width: 700px;
+.client-list-view {
+  padding: 20px 24px;
+  max-width: var(--max-container-width);
   margin: 20px auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
-  background-color: #ffffff;
+  box-sizing: border-box;
+  background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  box-sizing: border-box;
 }
 
-h1 {
-  color: #007bff;
-  text-align: center;
-  margin-bottom: 25px;
-  font-size: 2rem;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
-
-.status-message {
-  padding: 12px;
-  border-radius: 5px;
-  margin: 20px auto;
-  max-width: 95%;
+.header-actions {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  box-sizing: border-box;
+  margin-bottom: 20px;
+  gap: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 12px;
 }
 
-.loading-message {
-  background-color: #e9f7ef;
-  color: #28a745;
-  border: 1px solid #d1ecdd;
-  justify-content: center;
+.header-actions h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #007bff;
+  flex-grow: 1;
+}
+
+.full-width-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
 }
 
 .error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  background-color: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #ef9a9a;
 }
 
 .no-results-message {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
+  padding: 24px;
   text-align: center;
-  justify-content: center;
-}
-
-.loader {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #007bff;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  animation: spin 1s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.client-details-block {
+  color: #666;
+  font-style: italic;
   margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
 }
 
-.client-details-block p {
-  margin-bottom: 10px;
-  font-size: 1rem;
-  line-height: 1.5;
+.table-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  background-color: #fff;
 }
 
-.client-details-block p:last-child {
-  margin-bottom: 0;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
 }
 
-strong {
+thead {
+  background-color: #f5f5f5;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 14px;
+  box-sizing: border-box;
+  vertical-align: middle;
+  min-height: 30px;
+}
+
+th {
+  border-top: none;
+}
+
+tr td:first-child,
+tr th:first-child {
+  border-left: none;
+}
+
+tr td:last-child,
+tr th:last-child {
+  border-right: none;
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+
+th {
   font-weight: 600;
-  margin-right: 5px;
-  color: #555;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
 }
 
-.back-link {
-  display: inline-block;
-  margin-top: 25px;
-  color: #007bff;
+th:hover {
+  background-color: #ebebeb;
+}
+
+th.sorted-asc::after {
+  content: ' ▲';
+  font-size: 0.8em;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+th.sorted-desc::after {
+  content: ' ▼';
+  font-size: 0.8em;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+tbody tr {
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+th.col-id,
+td:nth-child(1) {
+  text-align: left;
+  width: 60px;
+  min-width: 60px;
+}
+
+th.col-name,
+td:nth-child(2) {
+  min-width: 150px;
+}
+
+th.col-email,
+td:nth-child(3) {
+  min-width: 180px;
+  word-break: break-all;
+}
+
+th.col-phone,
+td:nth-child(4) {
+  min-width: 120px;
+}
+
+th.col-address,
+td:nth-child(5) {
+  min-width: 200px;
+  word-break: break-word;
+}
+
+th.col-actions,
+td.actions-cell {
+  text-align: center;
+  min-width: 140px;
+}
+
+td.actions-cell {
+  padding: 10px 12px;
+  border-left: none;
+  border-right: none;
+}
+
+.action-links-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
   text-decoration: none;
-  font-size: 1rem;
-  transition: color 0.2s ease, text-decoration 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 30px;
+  gap: 8px;
 }
 
-.back-link:hover {
-  color: #0056b3;
-  text-decoration: underline;
+
+td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-info, .btn-warning, .btn-danger) {
+  display: inline-flex;
+  margin-left: auto;
+  margin-right: auto;
 }
+
+.btn:hover {
+  opacity: 0.85;
+}
+
+.btn-primary {
+  background-color: #1976d2;
+  color: white;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #333;
+}
+
+
+.header-actions .add-button { margin-left: 16px; }
 
 @media (max-width: 768px) {
-  .client-details-view {
-    padding: 15px;
-    margin: 15px auto;
-    max-width: 95%;
+  .client-list-view {
+    padding: 0 12px;
   }
 
-  h1 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-  }
-
-  .status-message {
-    padding: 10px;
-    font-size: 0.9rem;
-    gap: 8px;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 95%;
-  }
-
-  .status-message.loading-message,
-  .status-message.no-results-message {
-    align-items: center;
+  .header-actions h1 {
+    font-size: 1.6rem;
     text-align: center;
   }
 
-  .client-details-block {
-    margin-top: 15px;
-    padding-top: 15px;
+  .header-actions { gap: 12px; }
+  .header-actions .add-button { margin: 0 auto; }
+
+  .table-container {
+    margin-left: 0;
+    margin-right: 0;
   }
 
-  .client-details-block p {
-    font-size: 0.95rem;
-    margin-bottom: 8px;
-  }
-
-  strong {
-    font-weight: 600;
-  }
-
-  .back-link {
-    margin-top: 20px;
-    font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .client-details-view {
-    padding: 10px;
-    margin: 10px auto;
-  }
-
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 15px;
-  }
-
-  .status-message {
-    padding: 8px;
-    font-size: 0.85rem;
+  .action-links-container {
+    flex-direction: row;
+    flex-wrap: nowrap;
     gap: 6px;
-    max-width: 95%;
   }
 
-  .client-details-block {
-    margin-top: 12px;
-    padding-top: 12px;
+  .actions-cell .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 0;
+    min-height: auto;
   }
 
-  .client-details-block p {
-    font-size: 0.9rem;
-    margin-bottom: 6px;
+  .actions-cell .btn .material-symbols-outlined {
+    font-size: 20px;
   }
 
-  strong {
-    font-weight: 600;
-  }
-
-  .back-link {
-    margin-top: 15px;
-    font-size: 0.9rem;
+  .actions-cell .btn .btn-text {
+    display: none;
   }
 }
 </style>

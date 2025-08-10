@@ -6,6 +6,20 @@
         <span class="logo-text">StoneTop</span>
       </RouterLink>
 
+      <!-- Mobile hamburger button -->
+      <button
+        class="mobile-menu-btn"
+        aria-label="Меню"
+        :aria-expanded="showMobileNav"
+        @click="toggleMobileNav"
+      >
+        <span class="burger" :class="{ open: showMobileNav }">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
       <nav class="main-nav">
         <RouterLink to="/orders" class="nav-link">
           <OrderIcon class="nav-icon" />
@@ -50,6 +64,24 @@
       </div>
     </div>
 
+    <!-- Mobile dropdown navigation -->
+    <Transition name="fade">
+      <div v-if="showMobileNav" class="mobile-nav-dropdown">
+        <RouterLink to="/orders" class="mobile-nav-item" @click="onNavClicked">
+          <OrderIcon class="nav-icon" />
+          <span>Заказы</span>
+        </RouterLink>
+        <RouterLink to="/clients" class="mobile-nav-item" @click="onNavClicked">
+          <ClientIcon class="nav-icon" />
+          <span>Клиенты</span>
+        </RouterLink>
+        <RouterLink to="/materials" class="mobile-nav-item" @click="onNavClicked">
+          <MaterialIcon class="nav-icon" />
+          <span>Материалы</span>
+        </RouterLink>
+      </div>
+    </Transition>
+
     <NotificationsPanel v-if="showNotifications" @close="showNotifications = false" />
   </header>
 </template>
@@ -73,6 +105,7 @@ const router = useRouter()
 const showMenu = ref(false)
 const showNotifications = ref(false)
 const unreadCount = ref(3)
+const showMobileNav = ref(false)
 
 const userName = computed(() => authStore.user?.ФИО || 'Пользователь')
 const userInitials = computed(() => {
@@ -94,6 +127,14 @@ const toggleNotifications = () => {
 
     unreadCount.value = 0
   }
+}
+
+const toggleMobileNav = () => {
+  showMobileNav.value = !showMobileNav.value
+}
+
+const onNavClicked = () => {
+  showMobileNav.value = false
 }
 
 const logout = async () => {
@@ -172,6 +213,97 @@ const logout = async () => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.mobile-menu-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.burger {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.burger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: #333;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.burger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.burger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.burger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+
+.mobile-nav-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 60px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  border-top: 1px solid #f0f0f0;
+  display: none;
+  flex-direction: column;
+  padding: 8px 12px;
+  z-index: 200;
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: #333;
+  border-radius: 6px;
+}
+
+.mobile-nav-item:hover {
+  background: #f5f5f5;
+}
+
+
+@media (max-width: 768px) {
+  .main-nav {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .user-name {
+    display: none; 
+  }
+
+  .mobile-nav-dropdown {
+    display: flex;
+  }
 }
 
 .notifications-btn {

@@ -1,10 +1,10 @@
-// stores/attachmentStore.ts
+
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import type { Attachment } from '@/types/attachment'
 import { API_BASE_URL } from '@/utils/api'
 
-// Настройка базового URL для axios
+
 const api = axios.create({
   baseURL: API_BASE_URL
 })
@@ -117,7 +117,7 @@ export const useAttachmentStore = defineStore('attachmentStore', {
       try {
         await api.delete(`/api/attachments/${attachmentId}/`)
 
-        // Удаляем из обеих карт (заказы и расчеты)
+
         for (const attachments of this.orderAttachments.values()) {
           const index = attachments.findIndex((att) => att.id === attachmentId)
           if (index !== -1) {

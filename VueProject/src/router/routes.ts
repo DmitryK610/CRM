@@ -15,7 +15,7 @@ const CalculationDetailView = () => import('@/views/CalculationDetailView.vue')
 const MaterialsView = () => import('@/views/MaterialsView.vue')
 const SuppliersView = () => import('@/views/SuppliersView.vue')
 const EmployeesView = () => import('@/views/EmployeesView.vue')
-// const FinancialView = () => import('@/views/FinancialView.vue')
+
 const PriceListView = () => import('@/views/PriceListView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
@@ -39,6 +39,25 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'dashboard',
         name: 'Dashboard',
         component: DashboardView,
+        beforeEnter: async () => {
+          const { useOrderStore } = await import('@/stores/orderStore')
+          const orderStore = useOrderStore()
+          const hasOrdersCache = Array.isArray(orderStore.getOrders) && orderStore.getOrders.length > 0
+          const hasClientsCache = Array.isArray(orderStore.getClients) && orderStore.getClients.length > 0
+
+
+          if (!hasOrdersCache) {
+            orderStore.fetchOrders({ keepCache: false }).catch(() => { })
+          } else {
+            orderStore.fetchOrders({ keepCache: true }).catch(() => { })
+          }
+
+          if (!hasClientsCache) {
+            orderStore.fetchClients({ keepCache: false }).catch(() => { })
+          } else {
+            orderStore.fetchClients({ keepCache: true }).catch(() => { })
+          }
+        },
       },
       {
         path: 'orders',
@@ -59,7 +78,7 @@ export const routes: Array<RouteRecordRaw> = [
       {
         path: 'orders/:id',
         name: 'OrderDetail',
-        component: () => import('@/components/orders/OrderDetailView.vue'),
+  component: () => import('@/components/orders/OrderDetailView.vue'),
         props: true,
       },
       {
@@ -94,13 +113,22 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'calculations',
         name: 'CalculationsList',
         component: CalculationsView,
+        beforeEnter: async () => {
+          const { useCalculationStore } = await import('@/stores/calculationStore')
+          const calculationStore = useCalculationStore()
+          if (calculationStore.history.length === 0) {
+            await calculationStore.loadHistory({ keepCache: false })
+          } else {
+            calculationStore.loadHistory({ keepCache: true }).catch(() => { })
+          }
+        },
       },
       {
         path: 'calculations/new',
         name: 'CalculationForm',
         component: CalculationFormView,
         beforeEnter: async () => {
-          // Сбрасываем форму при переходе на создание нового расчета
+
           const { useCalculationStore } = await import('@/stores/calculationStore')
           const calculationStore = useCalculationStore()
           calculationStore.resetForm()
@@ -150,19 +178,30 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'suppliers',
         name: 'SuppliersList',
         component: SuppliersView,
+        beforeEnter: async () => {
+          const { useSupplierStore } = await import('@/stores/supplierStore');
+          const supplierStore = useSupplierStore();
+
+          if (supplierStore.getSuppliers.length === 0) {
+            await supplierStore.fetchSuppliers({ keepCache: false });
+          } else {
+
+            supplierStore.fetchSuppliers({ keepCache: true }).catch(() => {});
+          }
+        },
       },
 
-      {
-        path: 'employees',
-        name: 'EmployeesList',
-        component: EmployeesView,
-      },
 
-      // {
-      //   path: 'financial',
-      //   name: 'Financial',
-      //   component: FinancialView,
-      // },
+
+
+
+
+
+
+
+
+
+
       {
         path: 'price-list',
         name: 'PriceList',

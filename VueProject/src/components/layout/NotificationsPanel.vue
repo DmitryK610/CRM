@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-// Простая панель уведомлений
+
 </script>
 
 <style scoped>

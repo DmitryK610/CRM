@@ -1,4 +1,4 @@
-// types/attachment.ts
+
 export interface Attachment {
   id: number
   order?: number

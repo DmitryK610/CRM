@@ -1,4 +1,4 @@
-// src/stores/materialPurchaseStore.ts
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
@@ -9,7 +9,7 @@ import type {
 import * as materialPurchaseApi from '@/api/materialPurchase'
 
 export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
-  // --- Состояния ---
+
   const procurements = ref<MaterialPurchase[]>([])
   const _isLoading = ref(false)
   const _isCreating = ref(false)
@@ -19,7 +19,7 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
   const _error = ref<string | null>(null)
   const _fetchDetailsError = ref<string | null>(null)
 
-  // --- Геттеры ---
+
   const procurementsList = computed(() => procurements.value)
   const isLoading = computed(() => _isLoading.value)
   const isCreating = computed(() => _isCreating.value)
@@ -33,11 +33,11 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     return procurements.value.find((p) => p.id === id) || null
   })
 
-  // --- Действия ---
+
   function handleError(err: unknown, action: string): void {
     console.error(`Ошибка при ${action}:`, err)
 
-    // Универсальная обработка ошибок
+
     if (err instanceof Error) {
       _error.value = err.message
     } else if (typeof err === 'string') {
@@ -111,10 +111,10 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     _error.value = null
 
     try {
-      // Вызывает API-уровень
+
       const updatedPurchase = await materialPurchaseApi.updateMaterialPurchase(id, payload)
 
-      // Обновление списка в сторе (используя данные из updatedPurchase)
+
       const index = procurements.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         procurements.value[index] = updatedPurchase
@@ -157,10 +157,10 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
   }
 
   return {
-    // Состояния
+
     procurements,
 
-    // Геттеры
+
     procurementsList,
     isLoading,
     isCreating,
@@ -171,7 +171,7 @@ export const useMaterialPurchaseStore = defineStore('materialPurchases', () => {
     fetchDetailsError,
     getPurchaseById,
 
-    // Действия
+
     fetchMaterialPurchases,
     fetchMaterialPurchase,
     createMaterialPurchase,

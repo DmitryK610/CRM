@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-// Removed unused import
+
 import { api } from '@/api'; // Предполагаем наличие api
 import type { Order } from '@/types/order'; // Предполагаем наличие Order типа
 
@@ -55,10 +55,10 @@ interface OrderFile {
   name: string;
   url: string;
   size?: number;
-  // Другие свойства файла, если есть
+
 }
 
-// Removed unused ApiResponse interface
+
 
 
 const props = defineProps<{
@@ -70,13 +70,13 @@ const files = ref<OrderFile[] | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// Управление загрузкой файлов (опционально)
+
 const canUpload = ref(true); // Определите свою логику прав доступа
 const selectedFile = ref<File | null>(null);
 const uploadProgress = ref(0);
 const uploadError = ref<string | null>(null);
 
-// Управление удалением файлов (опционально)
+
 const canDelete = ref(true); // Определите свою логику прав доступа
 
 onMounted(async () => {
@@ -87,7 +87,7 @@ const fetchOrderFiles = async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    // Замените '/api/orders/{orderId}/files/' на фактический URL вашего API для получения файлов заказа
+
     const response = await api.get<OrderFile[]>(`/api/orders/${order.id}/files/`);
     files.value = response;
   } catch (err) {
@@ -128,7 +128,7 @@ const uploadFile = async () => {
     formData.append('file', selectedFile.value);
     formData.append('order_id', String(order.id)); // Передача ID заказа на сервер
 
-    // Замените '/api/orders/{orderId}/files/upload/' на фактический URL вашего API для загрузки файлов
+
     const response = await api.post<FormData, OrderFile>(`/api/orders/${order.id}/files/upload/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -142,7 +142,7 @@ const uploadFile = async () => {
     if (response) {
       files.value = [...(files.value || []), response]; // Добавить загруженный файл в список
       selectedFile.value = null;
-      // Сбросить поле выбора файла
+
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
       if (input) {
         input.value = '';
@@ -164,7 +164,7 @@ const deleteFile = async (fileId: number) => {
   error.value = null;
 
   try {
-    // Замените '/api/orders/files/{fileId}/' на фактический URL вашего API для удаления файлов
+
     await api.delete(`/api/orders/files/${fileId}/`);
     files.value = files.value?.filter(file => file.id !== fileId) || [];
   } catch (err: unknown) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="material-purchase-details-view">
+  <div class="material-purchase-details-view" :class="{ 'in-modal': !!props.isModal }">
     <h1 class="page-title">Детали закупки материала</h1>
 
     <div v-if="purchaseStore.isFetchingDetails" class="status-message loading-message">
@@ -74,11 +74,11 @@
 
 
       <div class="actions-panel">
-        <router-link :to="{ name: 'MaterialsView' }" class="btn secondary-button">
+        <router-link :to="{ name: 'MaterialsView' }" class="btn secondary-button" v-if="!props.isModal">
           К списку закупок
         </router-link>
         <router-link :to="{ name: 'EditMaterialPurchaseView', params: { id: purchaseDetails.id } }"
-          class="btn primary-button">
+          class="btn primary-button" v-if="!props.isModal">
           Редактировать
         </router-link>
       </div>
@@ -87,17 +87,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, watch, defineProps } from 'vue';
 import { useRoute } from 'vue-router';
 import { useMaterialPurchaseStore } from '@/stores/materialPurchaseStore';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { MaterialPurchase } from '@/types/materialPurchase';
 
+const props = defineProps<{ isModal?: boolean; modalPurchaseId?: number | null }>();
 const route = useRoute();
 const purchaseStore = useMaterialPurchaseStore();
 const materialStore = useMaterialStore();
 
-const purchaseId = computed(() => Number(route.params.id));
+const purchaseId = computed(() => {
+  if (props.modalPurchaseId !== undefined) {
+    return props.modalPurchaseId === null ? NaN : Number(props.modalPurchaseId);
+  }
+  return Number(route.params.id);
+});
 
 const purchaseDetails = computed<MaterialPurchase | null>(() => {
   if (isNaN(purchaseId.value)) return null;
@@ -216,6 +222,14 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   box-sizing: border-box;
 }
 
+.material-purchase-details-view.in-modal {
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  border: none;
+  box-shadow: none;
+}
+
 
 .page-title {
   color: #2c3e50;
@@ -267,7 +281,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
 
 .detail-label {
   font-weight: bold;
-  width: 200px;
+  width: 390px; 
   flex-shrink: 0;
   margin-right: 15px;
   text-align: left;
@@ -277,6 +291,25 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
 .detail-value {
   flex-grow: 1;
   word-break: break-word;
+}
+
+
+.material-purchase-details-view.in-modal .detail-item { position: static; align-items: center; }
+.material-purchase-details-view.in-modal .detail-item::after {
+  content: '';
+  flex: 0 1 180px;
+  max-width: 220px;
+  border-bottom: 1px dotted #e9ecef;
+  order: 1;
+  margin: 0 8px;
+}
+.material-purchase-details-view.in-modal .detail-label { order: 0; background: transparent; padding: 0; }
+.material-purchase-details-view.in-modal .detail-value { order: 2; background: transparent; padding: 0; text-align: left; flex: 0 0 50%; }
+.material-purchase-details-view.in-modal .detail-item.full-width::after { display: none; }
+
+@media (max-width: 768px) {
+  .material-purchase-details-view.in-modal .detail-item::after { display: none; }
+  .material-purchase-details-view.in-modal .detail-value { flex: initial; width: 100%; }
 }
 
 
@@ -358,21 +391,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   flex-wrap: wrap;
 }
 
-.btn {
-  padding: 10px 20px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  box-sizing: border-box;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
+.btn { padding: 10px 20px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; text-decoration: none; display: inline-block; text-align: center; box-sizing: border-box; white-space: nowrap; flex-shrink: 0; }
 
 .btn.primary-button {
   background-color: #007bff;

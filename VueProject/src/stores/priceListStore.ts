@@ -4,12 +4,12 @@ import { priceListApi } from '@/api/priceList'
 import type { PriceList } from '@/types'
 
 export const usePriceListStore = defineStore('priceList', () => {
-  // Состояние
+
   const priceList = ref<PriceList | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Загрузка прайс-листа
+
   const loadPriceList = async () => {
     try {
       loading.value = true
@@ -22,7 +22,7 @@ export const usePriceListStore = defineStore('priceList', () => {
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Ошибка загрузки прайс-листа'
 
-      // Возвращаем значения по умолчанию в случае ошибки (соответствуют Django модели)
+
       const defaultPriceList: PriceList = {
         measurement: 1.0,
         surfaceBondingPerM: 1.0,
@@ -64,7 +64,7 @@ export const usePriceListStore = defineStore('priceList', () => {
     }
   }
 
-  // Обновление прайс-листа
+
   const updatePriceList = async (data: PriceList) => {
     try {
       loading.value = true
@@ -82,7 +82,7 @@ export const usePriceListStore = defineStore('priceList', () => {
     }
   }
 
-  // Сброс к значениям по умолчанию
+
   const resetToDefaults = async () => {
     try {
       loading.value = true
@@ -100,18 +100,18 @@ export const usePriceListStore = defineStore('priceList', () => {
     }
   }
 
-  // Очистка ошибки
+
   const clearError = () => {
     error.value = null
   }
 
   return {
-    // Состояние
+
     priceList,
     loading,
     error,
 
-    // Действия
+
     loadPriceList,
     updatePriceList,
     resetToDefaults,

@@ -7,5 +7,5 @@
 </template>
 
 <script setup lang="ts">
-// Простая иконка email
+
 </script>

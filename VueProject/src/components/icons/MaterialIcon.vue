@@ -8,5 +8,5 @@
 </template>
 
 <script setup lang="ts">
-// Простая иконка материала
+
 </script>

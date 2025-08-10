@@ -61,8 +61,11 @@ export const useOrderStore = defineStore('orders', () => {
     error.value = apiErrorMessage
   }
 
-  async function fetchClients() {
-    isLoading.value = true
+  async function fetchClients(options?: { keepCache?: boolean }) {
+    const keepCache = options?.keepCache ?? true
+    if (!keepCache) {
+      isLoading.value = true
+    }
     error.value = null
     try {
       const fetchedClients = await clientApi.getClients<Client[] | PaginatedResponse<Client>>()
@@ -87,8 +90,11 @@ export const useOrderStore = defineStore('orders', () => {
     }
   }
 
-  async function fetchOrders() {
-    isLoading.value = true
+  async function fetchOrders(options?: { keepCache?: boolean }) {
+    const keepCache = options?.keepCache ?? true
+    if (!keepCache) {
+      isLoading.value = true
+    }
     error.value = null
     try {
       const response = await orderApi.getOrders<PaginatedResponse<Order> | Order[]>()

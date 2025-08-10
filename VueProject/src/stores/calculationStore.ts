@@ -1,4 +1,4 @@
-// src/stores/calculationStore.ts
+
 
 import { defineStore } from 'pinia'
 import { ref, computed, toRaw } from 'vue'
@@ -22,7 +22,7 @@ export const useCalculationStore = defineStore('calculation', () => {
   const priceListStore = usePriceListStore()
   const materialStore = useMaterialStore()
 
-  // State
+
   const isLoading = ref(false)
   const currentResult = ref<CalculationResult | null>(null)
   const history = ref<CalculationHistory[]>([])
@@ -82,7 +82,7 @@ export const useCalculationStore = defineStore('calculation', () => {
 
   const form = ref<CalculationForm>({ ...defaultForm })
 
-  // Getters
+
   const hasResult = computed(() => currentResult.value !== null)
   const formIsValid = computed(() => {
     return (
@@ -92,17 +92,14 @@ export const useCalculationStore = defineStore('calculation', () => {
     )
   })
 
-  // Actions
 
-  /**
-   * Вспомогательная функция для очистки объекта PriceList
-   * Удаляет поля, которые бэкенд не ожидает при отправке.
-   */
+
+  
   const cleanPriceListForBackend = (priceList: PriceList | null): PriceList | null => {
     if (!priceList) {
       return null
     }
-    // Оставляем все поля, чтобы не было ошибок типов, но backend лишние проигнорирует
+
     const cleaned: PriceList = {
       measurement: priceList.measurement,
       surfaceBondingPerM: priceList.surfaceBondingPerM,
@@ -130,9 +127,7 @@ export const useCalculationStore = defineStore('calculation', () => {
     return cleaned
   }
 
-  /**
-   * Выполняет предварительный расчет стоимости без сохранения в БД.
-   */
+  
   async function performCalculation() {
     if (!formIsValid.value) {
       let errorMessage = 'Заполните обязательные поля: материал и площадь изделия.'
@@ -154,18 +149,18 @@ export const useCalculationStore = defineStore('calculation', () => {
       let currentPriceList = priceListStore.priceList // Это может быть реактивный объект
 
       if (!currentPriceList) {
-        // Загружаем прайс-лист, если его нет
+
         currentPriceList = await priceListStore.loadPriceList()
       }
 
-      // ...удалён console.log...
 
-      // --- ИСПРАВЛЕНО: Очищаем priceList перед добавлением в payload ---
+
+
       const cleanedPriceList = cleanPriceListForBackend(currentPriceList)
 
       const rawForm = toRaw(form.value)
-      // Собираем CalculationForm для API (без лишних полей)
-      // Если доставка не требуется, не передаем deliveryType и обнуляем deliveryType в priceList
+
+
       const calculationForm: CalculationForm = {
         ...rawForm,
         stoneName: rawForm.selectedMaterial?.color_code || '',
@@ -174,12 +169,8 @@ export const useCalculationStore = defineStore('calculation', () => {
         deliveryType: rawForm.deliveryRequired ? rawForm.deliveryType : 'city',
       }
 
-      const result = await calculate(calculationForm)
-      currentResult.value = result
-      notificationStore.showNotification(
-        'Расчет успешно выполнен. Нажмите "Сохранить", чтобы добавить в историю.',
-        'success',
-      )
+  const result = await calculate(calculationForm)
+  currentResult.value = result
     } catch (error: unknown) {
       console.error('Calculation error:', error)
       const errorMessage = (error as Error).message || 'Ошибка при выполнении расчета'
@@ -189,9 +180,7 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
-  /**
-   * Сохраняет текущий расчет в базу данных.
-   */
+  
   async function saveCalculation(): Promise<boolean> {
     if (!currentResult.value) {
       notificationStore.showNotification('Сначала выполните расчет.', 'error')
@@ -209,27 +198,25 @@ export const useCalculationStore = defineStore('calculation', () => {
         currentPriceList = await priceListStore.loadPriceList()
       }
 
-      // --- ИСПРАВЛЕНО: Очищаем priceList перед добавлением в payload ---
+
       const cleanedPriceList = cleanPriceListForBackend(currentPriceList)
 
       const rawForm = toRaw(form.value)
-      // Собираем CalculationForm для API (без лишних полей)
+
       const calculationForm: CalculationForm = {
         ...rawForm,
         stoneName: rawForm.selectedMaterial?.color_code || '',
         dollarRate: materialStore.dollarRate,
         priceList: cleanedPriceList as PriceList,
       }
-      // saveNewCalculation требует также totalCost и breakdown, берем их из currentResult
+
       if (!currentResult.value) throw new Error('Нет результата для сохранения')
       const savedCalculation = await saveNewCalculation({
         ...calculationForm,
         totalCost: currentResult.value.totalCost,
         breakdown: currentResult.value.breakdown,
       })
-      history.value.unshift(savedCalculation)
-
-      notificationStore.showNotification('Расчет успешно сохранен!', 'success')
+  history.value.unshift(savedCalculation)
       resetForm()
       return true
     } catch (error: unknown) {
@@ -242,26 +229,28 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
-  /**
-   * Загружает историю расчетов с сервера.
-   */
-  async function loadHistory() {
-    isLoading.value = true
+  
+  async function loadHistory(options?: { keepCache?: boolean }) {
+    const keepCache = options?.keepCache ?? false
+    if (!keepCache) {
+      isLoading.value = true
+    }
     try {
       const historyData = await getCalculationHistory()
       history.value = historyData || []
     } catch (error) {
       console.error('Failed to load calculation history:', error)
-      history.value = []
+
+      if (history.value.length === 0) {
+        history.value = []
+      }
       notificationStore.showNotification('Ошибка при загрузке истории расчетов.', 'error')
     } finally {
       isLoading.value = false
     }
   }
 
-  /**
-   * Удаляет расчет по ID.
-   */
+  
   async function deleteCalculation(id: string | number) {
     isLoading.value = true
     try {
@@ -277,9 +266,7 @@ export const useCalculationStore = defineStore('calculation', () => {
     }
   }
 
-  /**
-   * Сбрасывает форму и результат к значениям по умолчанию.
-   */
+  
   function resetForm() {
     const currentDollarRate = materialStore.dollarRate
     form.value = { ...defaultForm, complexityAdditions: { ...defaultForm.complexityAdditions } }
@@ -287,31 +274,27 @@ export const useCalculationStore = defineStore('calculation', () => {
     materialStore.dollarRate = currentDollarRate
   }
 
-  /**
-   * Очищает только панель с результатом.
-   */
+  
   function clearResult() {
     currentResult.value = null
   }
 
-  /**
-   * Устанавливает выбранный материал в форму.
-   */
+  
   function setSelectedMaterial(material: Material) {
     form.value.selectedMaterial = material
     form.value.stoneName = material.color_code
   }
 
   return {
-    // State
+
     isLoading,
     form,
     currentResult,
     history,
-    // Getters
+
     hasResult,
     formIsValid,
-    // Actions
+
     performCalculation,
     saveCalculation,
     loadHistory,

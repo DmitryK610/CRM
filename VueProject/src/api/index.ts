@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 
-// Функция для очистки URL от дублирующихся слэшей
+
 const normalizeUrl = (url: string) => url.replace(/([^:]\/)\/+/g, '$1');
 
 const instance = axios.create({
@@ -12,7 +12,7 @@ const instance = axios.create({
   },
 });
 
-// Добавляем интерцептор для очистки URL
+
 instance.interceptors.request.use(config => {
   config.url = normalizeUrl(config.url || '');
   return config;

@@ -1,4 +1,4 @@
-// src/stores/notificationStore.ts
+
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 

@@ -1,13 +1,7 @@
-// src/utils/filters.ts
 
 
-/**
- * Фильтрует массив объектов по значению определенного свойства.
- * @param items Массив объектов для фильтрации.
- * @param property Название свойства для фильтрации.
- * @param value Значение, которое должно содержаться в свойстве.
- * @returns Отфильтрованный массив объектов.
- */
+
+
 export function filterByProperty<T>(items: T[], property: keyof T, value: any): T[] {
   if (!items || items.length === 0) {
     return [];
@@ -15,13 +9,7 @@ export function filterByProperty<T>(items: T[], property: keyof T, value: any): 
   return items.filter(item => item[property] === value);
 }
 
-/**
- * Фильтрует массив объектов по значению определенного свойства (включая частичное совпадение).
- * @param items Массив объектов для фильтрации.
- * @param property Название свойства для фильтрации.
- * @param searchTerm Строка для поиска (без учета регистра).
- * @returns Отфильтрованный массив объектов.
- */
+
 export function filterByPropertyContains<T>(items: T[], property: keyof T, searchTerm: string): T[] {
   if (!items || items.length === 0 || !searchTerm) {
     return items || [];
@@ -36,14 +24,7 @@ export function filterByPropertyContains<T>(items: T[], property: keyof T, searc
   });
 }
 
-/**
- * Фильтрует массив объектов по диапазону дат на основе определенного свойства.
- * @param items Массив объектов для фильтрации.
- * @param dateProperty Название свойства, содержащего дату.
- * @param startDate Начальная дата диапазона (включительно).
- * @param endDate Конечная дата диапазона (включительно).
- * @returns Отфильтрованный массив объектов.
- */
+
 export function filterByDateRange<T>(
   items: T[],
   dateProperty: keyof T,
@@ -67,13 +48,7 @@ export function filterByDateRange<T>(
   });
 }
 
-/**
- * Сортирует массив объектов по значению определенного свойства.
- * @param items Массив объектов для сортировки.
- * @param property Название свойства для сортировки.
- * @param ascending Направление сортировки (true - по возрастанию, false - по убыванию). По умолчанию true.
- * @returns Отсортированный массив объектов.
- */
+
 export function sortByProperty<T>(items: T[], property: keyof T, ascending: boolean = true): T[] {
   if (!items || items.length === 0) {
     return [];
@@ -92,7 +67,7 @@ export function sortByProperty<T>(items: T[], property: keyof T, ascending: bool
   });
 }
 
-// Вы можете добавить другие полезные функции для фильтрации и обработки данных, например:
-// - фильтрация по нескольким критериям
-// - группировка данных
-// - преобразование форматов данных
+
+
+
+

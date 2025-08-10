@@ -1,6 +1,6 @@
 <template>
-  <div class="calculation-editor">
-    <div class="header">
+  <div class="calculation-editor" :class="{ 'in-modal': !!props.isModal }">
+    <div class="header" v-if="!props.isModal">
       <h1>Создать новый расчет</h1>
       <p>Заполните форму для расчета стоимости изделия из камня</p>
     </div>
@@ -14,7 +14,7 @@
               :options="availableMaterials" label="material_name" :reduce="(mat: Material) => mat.id"
               placeholder="-- Выберите или найдите материал --" :filterable="true" :filter="filterMaterials"
               :clearable="true" @option:selected="handleMaterialSelect" @option:deselecting="handleMaterialDeselect"
-              appendToBody :calculatePosition="withPopper">
+              :append-to-body="!props.isModal" :calculatePosition="withPopper">
               <template #option="{ material_name, color_code, cost }">
                 <div class="option-content">
                   <span class="option-name">{{ material_name }} ({{ color_code }})</span>
@@ -200,7 +200,7 @@
             <button type="button" @click="resetForm" class="btn btn-danger">
               Сбросить
             </button>
-            <router-link to="/calculations" class="btn btn-secondary">
+            <router-link v-if="!props.isModal" to="/calculations" class="btn btn-secondary">
               Назад к списку
             </router-link>
           </div>
@@ -227,16 +227,16 @@
               </div>
             </div>
 
-            <div class="form-actions">
+            <div class="form-actions results-actions">
               <button @click="handleSaveCalculation"
                 :disabled="calculationStore.isLoading || !calculationStore.hasResult"
                 :title="!calculationStore.hasResult ? 'Сначала выполните расчет' : ''" class="btn btn-primary">
                 <span v-if="calculationStore.isLoading" class="loader"></span>
                 {{ calculationStore.isLoading ? 'Сохранение...' : 'Сохранить расчет' }}
               </button>
-              <button @click="clearResult" class="btn btn-secondary clear-results-btn">
+              <!-- <button @click="clearResult" class="btn btn-secondary clear-results-btn">
                 Очистить результат
-              </button>
+              </button> -->
             </div>
 
           </div>
@@ -260,7 +260,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
 import { useCalculationStore } from '@/stores/calculationStore'
 import { useMaterialStore } from '@/stores/materialStore'
 import { useClientStore } from '@/stores/clientStore'
@@ -276,19 +276,23 @@ const clientStore = useClientStore()
 const orderStore = useOrderStore()
 const router = useRouter()
 
-// Новые переменные для v-select
+
+const props = defineProps<{ isModal?: boolean }>()
+const emit = defineEmits(['close', 'saved'])
+
+
 const selectedMaterialId = ref<number | null>(null)
 
-// Computed для доступных материалов
+
 const availableMaterials = computed(() => materialStore.getMaterials || [])
 
-// Computed для выбранного материала
+
 const selectedMaterial = computed(() => {
   if (!selectedMaterialId.value) return null
   return availableMaterials.value.find(m => m.id === selectedMaterialId.value) || null
 })
 
-// Computed для отслеживания выбранного клиента
+
 const selectedClientId = computed({
   get: () => calculationStore.form.selectedClient?.id?.toString() || '',
   set: (value: string) => {
@@ -301,7 +305,7 @@ const selectedClientId = computed({
   }
 })
 
-// Computed для отслеживания выбранного заказа
+
 const selectedOrderId = computed({
   get: () => calculationStore.form.orderId?.toString() || '',
   set: (value: string) => {
@@ -313,7 +317,7 @@ const selectedOrderId = computed({
   }
 })
 
-// Computed для доступных заказов (только заказы текущего клиента или все, если клиент не выбран)
+
 const availableOrders = computed(() => {
   const orders = orderStore.getOrders || []
   if (calculationStore.form.selectedClient?.id) {
@@ -322,7 +326,7 @@ const availableOrders = computed(() => {
   return orders
 })
 
-// Функция фильтрации материалов (из MaterialStock)
+
 const filterMaterials = (options: Material[], search: string): Material[] => {
   const lowerSearch = search.toLowerCase().trim()
   if (!lowerSearch) {
@@ -335,7 +339,7 @@ const filterMaterials = (options: Material[], search: string): Material[] => {
   })
 }
 
-// Функция для withPopper (из MaterialStock)
+
 const withPopper = (dropdownList: HTMLElement, component: { $refs: { toggle: HTMLElement } }, { width }: { width: string }): (() => void) => {
   dropdownList.style.width = width
   const popperInstance = createPopper(component.$refs.toggle, dropdownList, {
@@ -350,7 +354,7 @@ const withPopper = (dropdownList: HTMLElement, component: { $refs: { toggle: HTM
   return () => popperInstance.destroy()
 }
 
-// Функция для форматирования валюты
+
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
@@ -358,7 +362,7 @@ const formatCurrency = (amount: number): string => {
   }).format(amount)
 }
 
-// Функция для получения человекочитаемых названий в детализации
+
 const getBreakdownLabel = (key: string): string => {
   const labels: Record<string, string> = {
     delivery: 'Доставка',
@@ -379,59 +383,64 @@ const getBreakdownLabel = (key: string): string => {
   return labels[key] || key
 }
 
-// Обработчик выбора материала
+
 const handleMaterialSelect = (material: Material) => {
   selectedMaterialId.value = material.id
   calculationStore.setSelectedMaterial(material)
 }
 
-// Обработчик очистки выбора материала
+
 const handleMaterialDeselect = () => {
   selectedMaterialId.value = null
-  // Очищаем материал в форме
+
   calculationStore.form.selectedMaterial = undefined
   calculationStore.form.stoneName = ''
 }
 
-// Обработчик нажатия на кнопку "Рассчитать"
+
 const handleCalculate = async () => {
   await calculationStore.performCalculation()
 }
 
-// Обработчик нажатия на кнопку "Сохранить расчет"
+
 const handleSaveCalculation = async () => {
   const success = await calculationStore.saveCalculation()
   if (success) {
-    router.push('/calculations') // Перенаправление на страницу со всеми расчетами
+    if (props.isModal) {
+      emit('saved')
+      emit('close')
+    } else {
+      router.push('/calculations')
+    }
   }
 }
 
-// Сброс формы
+
 const resetForm = () => {
   calculationStore.resetForm()
   selectedMaterialId.value = null
 }
 
-// Очистка результата
-const clearResult = () => {
-  calculationStore.clearResult()
-}
 
-// Выбор клиента
+
+
+
+
+
 const handleClientChange = () => {
-  // При изменении клиента сбрасываем выбранный заказ
+
   if (calculationStore.form.orderId) {
     calculationStore.form.orderId = null
   }
 }
 
-// Выбор заказа
+
 const handleOrderChange = () => {
-  // При выборе заказа можно автоматически заполнить клиента
+
   if (calculationStore.form.orderId) {
     const selectedOrder = availableOrders.value.find(order => order.id === calculationStore.form.orderId)
     if (selectedOrder && selectedOrder.client_info) {
-      // Устанавливаем клиента из заказа, если он не был выбран ранее
+
       if (!calculationStore.form.selectedClient) {
         const clientFromOrder = clientStore.clients.find(client => client.id === selectedOrder.client)
         if (clientFromOrder) {
@@ -442,7 +451,7 @@ const handleOrderChange = () => {
   }
 }
 
-// Загрузка материалов, клиентов и заказов при монтировании компонента
+
 onMounted(async () => {
   try {
     await Promise.all([
@@ -451,7 +460,7 @@ onMounted(async () => {
       orderStore.fetchOrders()
     ])
   } catch {
-    // Ошибки при загрузке обрабатываются в stores
+
   }
 })
 </script>
@@ -464,6 +473,33 @@ onMounted(async () => {
   font-family: 'Arial', sans-serif;
   color: #333;
   background-color: #f9fafb;
+}
+
+.calculation-editor.in-modal {
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  box-shadow: none;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+
+.calculation-editor.in-modal .calculation-form-container {
+  background-color: transparent;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.calculation-editor.in-modal .results-panel {
+  background-color: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.calculation-editor.in-modal .calculation-layout {
+  gap: 16px;
 }
 
 .header {
@@ -483,7 +519,7 @@ onMounted(async () => {
   color: #555;
 }
 
-/* LAYOUT */
+
 .calculation-layout {
   display: flex;
   flex-wrap: wrap;
@@ -500,7 +536,7 @@ onMounted(async () => {
   min-width: 300px;
 }
 
-/* FORM STYLES */
+
 .calculation-form-container {
   display: flex;
   flex-direction: column;
@@ -567,7 +603,7 @@ label {
   color: #6c757d;
 }
 
-/* CHECKBOX */
+
 .form-check {
   display: flex;
   align-items: center;
@@ -588,7 +624,7 @@ label {
   font-weight: 500;
 }
 
-/* ACCENT CHECKBOX */
+
 .accent-checkbox {
   display: flex;
   align-items: center;
@@ -618,7 +654,7 @@ label {
   user-select: none;
 }
 
-/* MATERIAL SEARCH DROPDOWN */
+
 .search-container {
   position: relative;
 }
@@ -678,7 +714,7 @@ label {
   margin-top: 4px;
 }
 
-/* COMPLEXITY SECTION */
+
 .complexity-section {
   margin-top: 15px;
   padding-top: 20px;
@@ -692,7 +728,7 @@ label {
   font-weight: 600;
 }
 
-/* FORM ACTIONS */
+
 .form-actions {
   margin-top: 15px;
   padding-top: 20px;
@@ -703,7 +739,29 @@ label {
   flex-wrap: wrap;
 }
 
-/* RESULTS PANEL */
+
+.results-actions {
+  justify-content: flex-end;
+}
+.results-actions .btn {
+  min-width: 180px;
+}
+.results-actions .btn + .btn {
+  
+  flex-basis: 180px;
+}
+
+@media (max-width: 768px) {
+  .results-actions {
+    justify-content: stretch;
+  }
+  .results-actions .btn {
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+}
+
+
 .results-panel {
   background-color: #ffffff;
   border-radius: 8px;
@@ -711,6 +769,11 @@ label {
   padding: 25px;
   position: sticky;
   top: 20px;
+}
+
+.calculation-editor.in-modal .results-panel {
+  position: sticky;
+  top: 10px;
 }
 
 .results-title {
@@ -776,7 +839,7 @@ label {
   width: 100%;
 }
 
-/* LOADER */
+
 .loader {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #fff;
@@ -799,7 +862,7 @@ label {
   }
 }
 
-/* BUTTONS */
+
 .btn {
   padding: 10px 20px;
   font-size: 1rem;
@@ -861,7 +924,7 @@ label {
   cursor: not-allowed;
 }
 
-/* V-SELECT CUSTOM STYLES */
+
 .v-select-custom {
   font-size: 1rem;
 }
@@ -929,7 +992,7 @@ label {
   color: white;
 }
 
-/* SELECTED MATERIAL INFO */
+
 .selected-material-info {
   margin-top: 10px;
   padding: 12px;
@@ -953,7 +1016,7 @@ label {
 }
 
 
-/* RESPONSIVENESS */
+
 @media (max-width: 992px) {
   .calculation-layout {
     flex-direction: column;
@@ -961,7 +1024,7 @@ label {
 
   .results-column {
     order: -1;
-    /* Move results to the top on smaller screens */
+    
   }
 
   .results-panel {

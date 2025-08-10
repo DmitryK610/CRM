@@ -1,7 +1,6 @@
 <template>
   <div class="order-item-form">
-    <h3>{{ isEditing ? 'Редактировать позицию' : 'Добавить позицию' }}</h3>
-
+   
     <div v-if="validationError" class="alert alert-danger">
       {{ validationError }}
     </div>
@@ -186,10 +185,10 @@ watch(() => props.item, (newItem) => {
   itemFormAttemptedSubmit.value = false;
 }, { deep: true });
 
-// This watcher doesn't need the 'newValue' parameter
+
 watch(() => props.formAttemptedSubmit, () => {
-    // The fact that this runs means the parent form submit was attempted.
-    // We don't need the value itself, just the trigger.
+
+
 });
 
 </script>
@@ -205,14 +204,7 @@ watch(() => props.formAttemptedSubmit, () => {
   color: #333;
 }
 
-h3 {
-  color: #007bff;
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.3rem;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
+
 
 .form-row {
   display: flex;

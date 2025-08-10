@@ -28,9 +28,10 @@ const currentYear = ref(new Date().getFullYear());
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  padding: 0 24px;
 }
 
 .container p {
@@ -39,7 +40,7 @@ const currentYear = ref(new Date().getFullYear());
 
 nav {
   display: flex;
-  gap: 20px;
+  gap: 16px;
 }
 
 .footer-link {
@@ -54,13 +55,17 @@ nav {
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
-    align-items: flex-start;
+  align-items: center;
+  text-align: center;
+  max-width: 100%;
+  padding: 0 12px;
   }
 
   nav {
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
   }
 }
 

@@ -39,7 +39,7 @@ const emit = defineEmits(['filter-changed']);
 
 const filters = ref<{ [key: string]: any }>({});
 
-// Инициализация фильтров пустыми значениями
+
 props.filterOptions.forEach(option => {
   filters.value[option.key] = '';
 });

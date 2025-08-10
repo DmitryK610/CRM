@@ -1,11 +1,12 @@
 <template>
-  <div class="order-detail-container">
+  <div class="order-detail-container" :class="{ 'in-modal': !!isModal }">
     <div v-if="orderStore.error" class="status-message error-message">
       ⚠️ Ошибка загрузки данных заказа: {{ orderStore.error }}
     </div>
     <div v-else-if="order" class="order-details-content">
       <div class="details-section">
         <h2>Информация о заказе №{{ order.order_number || order.id }}</h2>
+        <div class="details-grid">
 
         <div class="detail-line">
           <strong>Дата заказа:</strong>
@@ -22,10 +23,10 @@
         </div>
         <div class="detail-line">
           <strong>Телефон:</strong>
-          <span v-if="order.client_info && order.client_info.contact_phone"> {{ order.client_info.contact_phone
-          }}</span>
-
-
+          <span>
+            <span v-if="order.client_info && order.client_info.contact_phone">{{ order.client_info.contact_phone }}</span>
+            <span v-else>Не указан</span>
+          </span>
         </div>
 
 
@@ -101,9 +102,11 @@
           <strong>Примечание:</strong>
           <span class="note-value-span">{{ order.note || 'Нет примечаний' }}</span>
         </div>
+        </div>
 
         <div class="action-buttons mt-4">
-          <router-link :to="`/orders/${order.id}/edit`" class="btn btn-warning">Редактировать заказ</router-link>
+          <button v-if="isModal" type="button" class="btn btn-warning" @click="emitEdit">Редактировать заказ</button>
+          <router-link v-else :to="`/orders/${order.id}/edit`" class="btn btn-warning">Редактировать заказ</router-link>
         </div>
       </div>
 
@@ -140,28 +143,40 @@
       Заказ с ID {{ orderId }} не найден.
     </div>
 
-    <div class="back-button-container mt-4">
+    <div class="back-button-container mt-4" v-if="!isModal">
       <router-link to="/orders" class="btn btn-secondary">Вернуться к списку заказов</router-link>
     </div>
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">
 
-import { onMounted, computed } from 'vue';
+import { onMounted, computed, defineProps, defineEmits } from 'vue';
 import { useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore';
 import { OrderStatus, AdvancePaymentType, type Order } from '@/types/order';
 
+const props = defineProps<{ isModal?: boolean; modalOrderId?: number | null }>();
+const emit = defineEmits<{ (e: 'edit', id: number): void }>();
+
 const route = useRoute();
 const orderStore = useOrderStore(); //
 
-const orderId = computed(() => route.params.id ? Number(route.params.id) : null);
+const orderId = computed(() => {
+  if (props.modalOrderId !== undefined) {
+    return props.modalOrderId === null ? null : Number(props.modalOrderId);
+  }
+  return route.params.id ? Number(route.params.id) : null;
+});
 
 onMounted(async () => {
-  orderStore.clearError(); // Используем экшен для сброса ошибки, если он есть
-  if (orderId.value !== null) {
-    await orderStore.fetchOrderById(orderId.value);
+  orderStore.clearError();
+  const id = orderId.value;
+
+  if (id !== null) {
+    if (!orderStore.selectedOrder || orderStore.selectedOrder.id !== id) {
+      await orderStore.fetchOrderById(id);
+    }
   } else {
     console.error("Order ID is missing from route parameters.");
     orderStore.error = "Не удалось загрузить заказ: отсутствует ID в маршруте.";
@@ -170,7 +185,12 @@ onMounted(async () => {
 
 const order = computed<Order | null>(() => orderStore.selectedOrder); //
 
-/** Форматирует дату в локализованный вид (ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ). */
+const emitEdit = () => {
+  const id = orderId.value ?? (orderStore.selectedOrder?.id ?? null);
+  if (id !== null) emit('edit', id);
+};
+
+
 const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'не указана';
   try {
@@ -178,7 +198,7 @@ const formatDate = (dateString: string | null | undefined): string => {
     if (isNaN(date.getTime())) {
       return 'некорректная дата';
     }
-    // Если в строке есть время (обычно обозначается 'T'), отображаем его
+
     if (dateString.includes('T') || dateString.includes(':')) { // Добавил проверку на ':' для форматов без 'T'
       return date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     }
@@ -188,7 +208,7 @@ const formatDate = (dateString: string | null | undefined): string => {
   }
 };
 
-/** Форматирует числовое значение как валюту (RUB). */
+
 const formatCurrency = (value: number | string | undefined | null): string => {
   if (value === undefined || value === null || value === '') return '---';
   const numValue = Number(value);
@@ -207,7 +227,7 @@ const formatCurrency = (value: number | string | undefined | null): string => {
   }
 };
 
-/** Возвращает текстовое представление типа авансового платежа. */
+
 const getAdvancePaymentTypeText = (type: AdvancePaymentType | null | undefined): string => {
   if (!type) return 'Не указан';
   switch (type) {
@@ -216,7 +236,7 @@ const getAdvancePaymentTypeText = (type: AdvancePaymentType | null | undefined):
     case AdvancePaymentType.CASHLESS:
       return 'Безналичные';
     default:
-      // Обработка случая, когда type может быть строкой, не соответствующей enum
+
       const knownTypes: Record<string, string> = {
         [AdvancePaymentType.CASH]: 'Наличные',
         [AdvancePaymentType.CASHLESS]: 'Безналичные',
@@ -225,7 +245,7 @@ const getAdvancePaymentTypeText = (type: AdvancePaymentType | null | undefined):
   }
 };
 
-/** Возвращает CSS класс для стилизации статуса заказа. */
+
 const getStatusClass = (status: OrderStatus | null | undefined): string => {
   if (!status) return 'status-unknown';
 
@@ -258,6 +278,15 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   box-sizing: border-box;
 }
 
+.order-detail-container.in-modal {
+  
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  border: none;
+  box-shadow: none;
+}
+
 .page-title {
   color: #2c3e50;
   text-align: center;
@@ -274,8 +303,34 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   padding: 15px;
   border: 1px solid #eee;
   border-radius: 6px;
-  background-color: #f9f9f9;
+  background-color: #fff; 
 }
+
+
+.order-detail-container.in-modal .details-section {
+  margin-bottom: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr; 
+  gap: 12px 24px;
+}
+
+.details-grid .detail-line {
+  margin-bottom: 0; 
+}
+
+.details-grid .detail-line strong {
+  width: 350px; 
+  margin-right: 12px;
+}
+
+
 
 .details-section h2 {
   color: #555;
@@ -292,19 +347,24 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   line-height: 1.5;
   font-size: 1rem;
   align-items: baseline;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
 }
 
 .detail-line strong {
   font-weight: bold;
-  width: 200px;
+  width: 350px; 
   flex-shrink: 0;
-  margin-right: 15px;
+  margin-right: 10px; 
   text-align: left;
 }
 
 .detail-line span {
   flex-grow: 1;
+  min-width: 0; 
+  text-align: center; 
 }
 
 .detail-line.note-line {
@@ -330,36 +390,108 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   color: #495057;
   box-sizing: border-box;
   overflow-x: auto;
+  text-align: left; 
+}
+
+
+
+.order-detail-container.in-modal .detail-line {
+  position: static;
+  align-items: center;
+}
+.order-detail-container.in-modal .detail-line::after {
+  content: '';
+  flex: 0 1 180px; 
+  max-width: 220px; 
+  border-bottom: 1px dotted #e9ecef;
+  order: 1;
+  margin: 0 8px;
+}
+.order-detail-container.in-modal .detail-line strong { order: 0; background: transparent; padding: 0; }
+.order-detail-container.in-modal .detail-line > span { order: 2; text-align: left; background: transparent; padding: 0; flex: 0 0 50%; }
+.order-detail-container.in-modal .detail-line.note-line::after { display: none; }
+
+@media (max-width: 768px) {
+  .order-detail-container.in-modal .detail-line::after { display: none; }
+  .order-detail-container.in-modal .detail-line > span { flex: initial; width: 100%; }
+}
+
+.order-items-list-detail {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .order-items-list-detail table {
   width: 100%;
+  min-width: 600px; 
   border-collapse: collapse;
-  margin-top: 15px;
-  font-size: 0.95rem;
-  background-color: #fff;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
+  background: #fff;
+  table-layout: fixed;
 }
 
 .order-items-list-detail th,
 .order-items-list-detail td {
   border: 1px solid #eee;
-  padding: 10px;
+  padding: 8px 12px; 
   text-align: left;
   word-break: break-word;
+  vertical-align: middle;
 }
 
 .order-items-list-detail th {
-  background-color: #e9ecef;
+  background-color: #f5f5f5;
   font-weight: 600;
   font-size: 0.9rem;
   color: #495057;
 }
 
+
+.order-items-list-detail table th:nth-child(1),
+.order-items-list-detail table td:nth-child(1) { 
+  width: 40px;
+  text-align: center;
+}
+.order-items-list-detail table th:nth-child(2),
+.order-items-list-detail table td:nth-child(2) { 
+  width: 40%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.order-items-list-detail table th:nth-child(3),
+.order-items-list-detail table td:nth-child(3) { 
+  width: 110px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.order-items-list-detail table th:nth-child(4),
+.order-items-list-detail table td:nth-child(4) { 
+  width: 150px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.order-items-list-detail table th:nth-child(5),
+.order-items-list-detail table td:nth-child(5) { 
+  width: 160px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
 .order-items-list-detail tbody tr:nth-child(even) {
   background-color: #f8f9fa;
+}
+
+.order-items-list-detail tbody tr:hover {
+  background-color: #f6f8fa;
+}
+
+
+.order-items-list-detail thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .text-muted {
@@ -534,7 +666,7 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   }
 
   .detail-line span {
-    width: 100%;
+  width: 100%;
   }
 
   .note-value-span {

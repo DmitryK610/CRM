@@ -1,6 +1,6 @@
 <template>
-  <div class="client-form">
-    <h1>{{ isEditing ? 'Редактировать клиента' : 'Добавить нового клиента' }}</h1>
+  <div class="client-form" :class="{ 'in-modal': !!isModal }">
+  
 
 
 
@@ -27,35 +27,49 @@
         <textarea id="address" v-model="clientData.address" class="form-control"></textarea>
       </div>
 
-      <button type="submit" class="btn btn-primary">{{ isEditing ? 'Сохранить изменения' : 'Добавить клиента' }}</button>
-      <button type="button" class="btn btn-secondary" @click="cancelEdit">Отмена</button>
+      <div class="form-group">
+        <label for="note">Примечание (необязательно)</label>
+        <textarea id="note" v-model="clientData.note" class="form-control" placeholder="Дополнительные комментарии о клиенте"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{{ isEditing ? 'Сохранить изменения' : 'Добавить клиента' }}</button>
+      </div>
     </form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, defineProps, defineEmits } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useClientStore } from '@/stores'; // Предполагаем наличие clientStore
 import type { Client } from '@/types/client';
 
 const router = useRouter();
 const route = useRoute();
+const props = defineProps<{ isModal?: boolean; modalClientId?: number | null }>();
+const emit = defineEmits(['close', 'saved']);
 const clientStore = useClientStore();
 
-const clientId = route.params.id ? Number(route.params.id) : null;
-const isEditing = computed(() => !!clientId);
+const clientId = computed<number | null>(() => {
+  if (props.modalClientId !== undefined) {
+    return props.modalClientId === null ? null : Number(props.modalClientId);
+  }
+  return route.params.id ? Number(route.params.id) : null;
+});
+const isEditing = computed(() => !!clientId.value);
 
 const clientData = ref<Partial<Client>>({
   full_name: '',
   email: '',
   contact_phone: '',
   address: '',
+  note: ''
 });
 
 onMounted(async () => {
-  if (isEditing.value && clientId) {
-    await clientStore.fetchClientById(clientId);
+  if (isEditing.value && clientId.value) {
+    await clientStore.fetchClientById(clientId.value);
     if (clientStore.selectedClient) {
       clientData.value = { ...clientStore.selectedClient };
     }
@@ -63,10 +77,15 @@ onMounted(async () => {
 });
 
 const saveClient = async () => {
-  if (isEditing.value && clientId && clientStore.selectedClient) {
+  if (isEditing.value && clientId.value && clientStore.selectedClient) {
     try {
-      await clientStore.updateClient(clientId, clientData.value as Client);
-      router.push('/clients');
+      await clientStore.updateClient(clientId.value, clientData.value as Client);
+      if (props.isModal) {
+        emit('saved');
+        emit('close');
+      } else {
+        router.push('/clients');
+      }
     } catch (error) {
       console.error('Ошибка при обновлении клиента:', error);
 
@@ -74,7 +93,12 @@ const saveClient = async () => {
   } else {
     try {
       await clientStore.createClient(clientData.value as Omit<Client, 'id'>);
-      router.push('/clients');
+      if (props.isModal) {
+        emit('saved');
+        emit('close');
+      } else {
+        router.push('/clients');
+      }
     } catch (error) {
       console.error('Ошибка при создании клиента:', error);
 
@@ -82,7 +106,11 @@ const saveClient = async () => {
   }
 };
 const cancelEdit = () => {
-  router.push('/clients');
+  if (props.isModal) {
+    emit('close');
+  } else {
+    router.push('/clients');
+  }
 };
 </script>
 
@@ -99,6 +127,14 @@ const cancelEdit = () => {
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
+}
+
+.client-form.in-modal {
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 
@@ -179,6 +215,21 @@ textarea.form-control {
 }
 
 
+.client-form.in-modal .form-actions {
+  
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #007bff;
+}
+
+
+
+
 
 .btn-primary { background-color: #007bff; color: white; border-color: #007bff; }
 .btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
@@ -233,12 +284,10 @@ textarea.form-control {
   .btn {
     padding: 6px 12px;
     font-size: 0.85rem;
-
-
-   .btn:not(:last-child) {
-    margin-right: 6px;
   }
 
-}
+  .btn:not(:last-child) {
+    margin-right: 6px;
+  }
 }
 </style>

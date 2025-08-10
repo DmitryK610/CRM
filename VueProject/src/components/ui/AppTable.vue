@@ -44,7 +44,7 @@ defineProps({
 
 <style scoped>
 .app-table-container {
-  overflow-x: auto; /* Добавляем горизонтальную прокрутку для больших таблиц */
+  overflow-x: auto; 
 }
 
 .app-table {
@@ -76,5 +76,5 @@ defineProps({
   background-color: #f9f9f9;
 }
 
-/* Дополнительные стили могут быть добавлены здесь */
+
 </style>

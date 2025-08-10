@@ -103,18 +103,18 @@ import type { CalculationForm, CalculationResult } from '@/types/calculation'
 import { getMaterials } from '@/api/material'
 import { calculate } from '@/api/calculation'
 
-// Props и эмиты
+
 const emit = defineEmits<{
   calculated: [result: CalculationResult]
 }>()
 
-// Состояние
+
 const router = useRouter()
 const materials = ref<Material[]>([])
 const isLoading = ref(false)
 const result = ref<CalculationResult | null>(null)
 
-// Форма быстрого расчета
+
 const quickForm = ref<CalculationForm>({
   stoneName: '',
   productArea: 0,
@@ -166,12 +166,12 @@ const quickForm = ref<CalculationForm>({
   }
 })
 
-// Computed
+
 const isFormValid = computed(() => {
   return quickForm.value.stoneName.length > 0 && quickForm.value.productArea > 0
 })
 
-// Методы
+
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
@@ -188,7 +188,7 @@ const handleQuickCalculation = async () => {
     result.value = calculationResult
     emit('calculated', calculationResult)
   } catch {
-    // Ошибка при выполнении расчета
+
   } finally {
     isLoading.value = false
   }
@@ -198,12 +198,12 @@ const openFullCalculator = () => {
   router.push('/calculations')
 }
 
-// Загрузка данных
+
 onMounted(async () => {
   try {
     materials.value = await getMaterials()
   } catch {
-    // Ошибка при загрузке материалов
+
   }
 })
 </script>

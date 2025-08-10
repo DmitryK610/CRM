@@ -83,7 +83,7 @@ const handleFileChange = (event: Event) => {
 }
 
 .file-upload-input {
-  display: none; /* Скрываем стандартный input file */
+  display: none; 
 }
 
 .selected-files {

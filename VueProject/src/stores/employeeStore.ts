@@ -20,10 +20,13 @@ export const useEmployeeStore = defineStore('employee', () => {
 
   const getSelectedEmployee = computed(() => selectedEmployee.value)
 
-  async function fetchEmployees() {
+  async function fetchEmployees(options?: { keepCache?: boolean }) {
+    const keepCache = options?.keepCache ?? true
     isLoading.value = true
     error.value = null
-    employees.value = []
+    if (!keepCache) {
+      employees.value = []
+    }
 
     try {
       const fetchedData = await employeeApi.getEmployees<any>()

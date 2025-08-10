@@ -16,7 +16,7 @@ export interface Material {
   image_url?: string // URL изображения материала (если есть)
 
   supplier_details?: {
-    // Добавьте это свойство
+
     id: number
     company_name: string
   }

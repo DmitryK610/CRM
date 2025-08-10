@@ -1,4 +1,4 @@
-// src/api/calculation.ts
+
 
 import { api } from '@/utils/api'
 import type { CalculationForm, CalculationResult, CalculationHistory } from '@/types/calculation'
@@ -6,7 +6,7 @@ import type { PriceListFormData } from '@/types/priceList'
 
 const CALCULATION_ENDPOINT = '/api/calculations/'
 
-// Интерфейс для ответа Django REST Framework с пагинацией
+
 interface DjangoPagedResponse<T> {
   count: number
   next: string | null
@@ -14,15 +14,9 @@ interface DjangoPagedResponse<T> {
   results: T[]
 }
 
-/**
- * Выполняет расчет на основе предоставленных данных БЕЗ сохранения в базу данных.
- * Отправляет данные на бэкенд для расчета с флагом preview_only=true.
- * Возвращает только результат расчета для отображения в интерфейсе.
- * @param calculationData Данные для расчета
- * @returns Результат расчета
- */
+
 export async function calculate(calculationData: CalculationForm): Promise<CalculationResult> {
-  // Проверяем обязательные поля
+
   if (!calculationData.selectedMaterial && !calculationData.stoneName) {
     throw new Error('Не выбран материал для расчета')
   }
@@ -31,9 +25,9 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
     throw new Error('Площадь изделия должна быть больше 0')
   }
 
-  // Если доставка не требуется, не отправляем deliveryType и не учитываем delivery_type в priceList
+
   const backendData = {
-    // Информация о клиенте (если выбран)
+
     client: calculationData.selectedClient?.id || null,
     client_info: calculationData.selectedClient
       ? {
@@ -44,12 +38,12 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
         }
       : null,
 
-    // Основные данные - используем формат, который ожидает CalculationSerializer
+
     stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName,
     productArea: calculationData.productArea,
     measurementRequired: calculationData.measurementRequired,
 
-    // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
+
     surfaceBonding: calculationData.surfaceBonding,
     edgeType: calculationData.edgeType,
     edgeLength: calculationData.edgeLength,
@@ -65,13 +59,13 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
       deliveryType: calculationData.deliveryType,
     }),
 
-    // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
+
     complexityAdditions: calculationData.complexityAdditions,
 
-    // Добавляем dollarRate в backendData
+
     dollarRate: calculationData.dollarRate,
 
-    // --- ИСПРАВЛЕНО: Удалены поля, которые вызывали TypeError ---
+
     ...(calculationData.priceList && {
       priceList: {
         measurement: calculationData.priceList.measurement,
@@ -101,19 +95,19 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
         radius_300_to_1000_per_unit: calculationData.priceList.radius300To1000PerUnit,
         vertical_radius_per_unit: calculationData.priceList.verticalRadiusPerUnit,
         two_plane_product_per_unit: calculationData.priceList.twoPlaneProductPerUnit,
-        // Удалены поля lastSaved, baseMultiplier и все коэффициенты, так как бэкенд не ожидает их здесь
+
       },
     }),
 
-    // Флаг указывающий, что это предварительный расчет без сохранения
+
     preview_only: true,
   }
 
-  // Логирование данных для отладки
-  // ...удалён console.log...
+
+
 
   try {
-    // Отправляем POST запрос на основной endpoint с флагом preview_only
+
     const result = await api.post<typeof backendData, CalculationResult>(
       CALCULATION_ENDPOINT,
       backendData,
@@ -126,17 +120,12 @@ export async function calculate(calculationData: CalculationForm): Promise<Calcu
     return result
   } catch (error) {
     console.error('Calculation API error:', error)
-    // Пробрасываем ошибку дальше для обработки в store
+
     throw error
   }
 }
 
-/**
- * Сохраняет новый расчет в базу данных.
- * Эта функция вызывается после того, как расчет был выполнен и его результат получен.
- * @param calculationData Полные данные расчета, включая результат (totalCost, breakdown) и прайс-лист.
- * @returns Сохраненный объект истории расчета (CalculationHistory).
- */
+
 export async function saveNewCalculation(
   calculationData: CalculationForm & {
     totalCost: number
@@ -144,7 +133,7 @@ export async function saveNewCalculation(
   },
 ): Promise<CalculationHistory> {
   const backendData = {
-    // Информация о клиенте (если выбран)
+
     client: calculationData.selectedClient?.id || null,
     client_info: calculationData.selectedClient
       ? {
@@ -155,12 +144,12 @@ export async function saveNewCalculation(
         }
       : null,
 
-    // Основные данные - используем формат, который ожидает CalculationSerializer
+
     stoneName: calculationData.selectedMaterial?.color_code || calculationData.stoneName,
     productArea: calculationData.productArea,
     measurementRequired: calculationData.measurementRequired,
 
-    // Дополнительные параметры - используем формат, который ожидает CalculationSerializer
+
     surfaceBonding: calculationData.surfaceBonding,
     edgeType: calculationData.edgeType,
     edgeLength: calculationData.edgeLength,
@@ -174,13 +163,13 @@ export async function saveNewCalculation(
     onSiteJoining: calculationData.onSiteJoining,
     deliveryType: calculationData.deliveryType,
 
-    // Надбавка за сложность - используем формат, который ожидает CalculationSerializer
+
     complexityAdditions: calculationData.complexityAdditions,
 
-    // Добавляем dollarRate в backendData для сохранения
+
     dollarRate: calculationData.dollarRate,
 
-    // --- ИСПРАВЛЕНО: Удалены поля, которые вызывали TypeError ---
+
     ...(calculationData.priceList && {
       priceList: {
         measurement: calculationData.priceList.measurement,
@@ -208,18 +197,18 @@ export async function saveNewCalculation(
         radius_300_to_1000_per_unit: calculationData.priceList.radius300To1000PerUnit,
         vertical_radius_per_unit: calculationData.priceList.verticalRadiusPerUnit,
         two_plane_product_per_unit: calculationData.priceList.twoPlaneProductPerUnit,
-        // Удалены поля lastSaved, baseMultiplier и все коэффициенты, так как бэкенд не ожидает их здесь
+
       },
     }),
 
-    // Результаты расчета не нужно передавать - бэкенд пересчитает их
-    // totalCost: calculationData.totalCost,
-    // breakdown: calculationData.breakdown,
 
-    // НЕ передаем preview_only - расчет сохраняется в базу данных
+
+
+
+
   }
 
-  // Отправляем POST запрос на основной endpoint для сохранения
+
   const result = await api.post<typeof backendData, CalculationHistory>(
     CALCULATION_ENDPOINT,
     backendData,
@@ -232,10 +221,7 @@ export async function saveNewCalculation(
   return result
 }
 
-/**
- * Получение истории расчетов.
- * @returns Промис с массивом истории расчетов.
- */
+
 export async function getCalculationHistory(): Promise<CalculationHistory[]> {
   const result = await api.get<DjangoPagedResponse<CalculationHistory> | CalculationHistory[]>(
     CALCULATION_ENDPOINT,
@@ -245,12 +231,12 @@ export async function getCalculationHistory(): Promise<CalculationHistory[]> {
     return []
   }
 
-  // Если это объект с пагинацией Django REST Framework
+
   if ('results' in result && Array.isArray(result.results)) {
     return result.results
   }
 
-  // Если это обычный массив
+
   if (Array.isArray(result)) {
     return result
   }
@@ -258,11 +244,7 @@ export async function getCalculationHistory(): Promise<CalculationHistory[]> {
   return []
 }
 
-/**
- * Получение расчета по ID.
- * @param id Идентификатор расчета.
- * @returns Промис с информацией о расчете.
- */
+
 export async function getCalculationById(id: string): Promise<CalculationHistory> {
   const result = await api.get<CalculationHistory>(`${CALCULATION_ENDPOINT}${id}/`)
 
@@ -273,11 +255,7 @@ export async function getCalculationById(id: string): Promise<CalculationHistory
   return result
 }
 
-/**
- * Удаление расчета по ID.
- * @param id Идентификатор расчета.
- * @returns Промис, который завершается после удаления.
- */
+
 export async function deleteCalculation(id: string | number): Promise<void> {
   await api.delete(`${CALCULATION_ENDPOINT}${id}/`)
 }

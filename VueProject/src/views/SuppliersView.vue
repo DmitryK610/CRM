@@ -1,49 +1,44 @@
 <template>
   <div class="supplier-list-view">
-    <h1>Список поставщиков</h1>
+    <h1>Поставщики</h1>
 
     <div class="controls-panel">
     </div>
 
-    <div v-if="supplierStore.getIsLoading" class="status-message loading-message">
-      Загрузка поставщиков...
-    </div>
-
-    <div v-else-if="supplierStore.getError" class="status-message error-message">
+    <div v-if="supplierStore.getError" class="status-message error-message">
       ⚠️ Ошибка загрузки поставщиков: {{ supplierStore.getError }}
     </div>
 
-    <div v-else-if="supplierStore.getSuppliers.length > 0">
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th class="col-id">ID</th>
-              <th class="col-name">Название</th>
-              <th class="col-contact-person">Контактное лицо</th>
-              <th class="col-email">Email</th>
-              <th class="col-phone">Телефон</th>
-              <th class="col-address">Адрес</th>
-              <th class="col-material">Материал</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="supplier in supplierStore.getSuppliers" :key="supplier.id">
-              <td>{{ supplier.id }}</td>
-              <td>{{ supplier.company_name }}</td>
-              <td>{{ supplier.contact_person }}</td>
-              <td>{{ supplier.email }}</td>
-              <td>{{ supplier.phone }}</td>
-              <td>{{ supplier.supplier_address }}</td>
-              <td>{{ supplier.note }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div v-else class="status-message no-results-message">
-      Нет доступных поставщиков.
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-id">№</th>
+            <th class="col-name">Название</th>
+            <th class="col-contact-person">Контактное лицо</th>
+            <th class="col-email">Email</th>
+            <th class="col-phone">Телефон</th>
+            <th class="col-address">Адрес</th>
+            <th class="col-material">Материал</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="supplier in supplierStore.getSuppliers" :key="supplier.id">
+            <td>{{ supplier.id }}</td>
+            <td>{{ supplier.company_name }}</td>
+            <td>{{ supplier.contact_person }}</td>
+            <td>{{ supplier.email }}</td>
+            <td>{{ supplier.phone }}</td>
+            <td>{{ supplier.supplier_address }}</td>
+            <td>{{ supplier.note }}</td>
+          </tr>
+          <tr v-if="!supplierStore.getIsLoading && supplierStore.getSuppliers.length === 0">
+            <td colspan="7" style="text-align:center; color:#856404; background:#fff3cd;">
+              Нет доступных поставщиков.
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
   </div>
@@ -57,7 +52,10 @@ const supplierStore = useSupplierStore();
 
 onMounted(() => {
   supplierStore.clearError();
-  supplierStore.fetchSuppliers();
+
+  if (supplierStore.getSuppliers.length > 0) {
+    supplierStore.fetchSuppliers({ keepCache: true }).catch(() => {});
+  }
 });
 </script>
 
@@ -78,10 +76,10 @@ h1 {
   color: #007bff;
   text-align: center;
   margin-bottom: 25px;
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 600;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+text-align: left;
+margin: 0;
 }
 
 .controls-panel {
@@ -195,7 +193,7 @@ tbody tr:hover {
 
 th.col-id,
 td:nth-child(1) {
-  text-align: center;
+  text-align: left;
   width: 80px;
   min-width: 60px;
 }
@@ -242,11 +240,20 @@ td:nth-child(7) {
   font-weight: 600;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   flex-shrink: 0;
   box-sizing: border-box;
   white-space: nowrap;
+}
+
+
+td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-info, .btn-warning, .btn-danger) {
+  display: inline-flex;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .btn-primary {

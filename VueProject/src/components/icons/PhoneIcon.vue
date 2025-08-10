@@ -9,5 +9,5 @@
 </template>
 
 <script setup lang="ts">
-// Простая иконка телефона
+
 </script>

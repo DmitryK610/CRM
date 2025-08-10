@@ -14,13 +14,16 @@ export const useSupplierStore = defineStore('supplier', () => {
   const getError = computed(() => error.value)
   const getSelectedSupplier = computed(() => selectedSupplier.value)
 
-  async function fetchSuppliers(): Promise<void> {
+  async function fetchSuppliers(options?: { keepCache?: boolean }): Promise<void> {
+    const keepCache = options?.keepCache ?? true
     isLoading.value = true
     error.value = null
-    suppliers.value = []
+    if (!keepCache) {
+      suppliers.value = []
+    }
 
     try {
-      const fetchedData = await supplierApi.getSuppliers<any>()
+  const fetchedData = await supplierApi.getSuppliers<any>()
 
       if (fetchedData && Array.isArray(fetchedData.results)) {
         suppliers.value = fetchedData.results
@@ -33,7 +36,7 @@ export const useSupplierStore = defineStore('supplier', () => {
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Не удалось загрузить поставщиков.'
       error.value = errorMessage
-    } finally {
+  } finally {
       isLoading.value = false
     }
   }

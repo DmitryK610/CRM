@@ -6,5 +6,5 @@
 </template>
 
 <script setup lang="ts">
-// Минимальный скрипт для корректной компиляции
+
 </script>

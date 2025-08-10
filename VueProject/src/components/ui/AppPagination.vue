@@ -42,12 +42,12 @@ const emit = defineEmits(['page-changed']);
 
 const totalPages = computed(() => Math.ceil(props.totalItems / props.pageSize) || 1);
 
-// const goToPage = ref(props.currentPage);
-// const goToSpecificPage = () => {
-//   if (goToPage.value >= 1 && goToPage.value <= totalPages.value) {
-//     emit('page-changed', goToPage.value);
-//   }
-// };
+
+
+
+
+
+
 </script>
 
 <style scoped>

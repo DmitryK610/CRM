@@ -1,6 +1,6 @@
 <template>
-  <div class="order-editor">
-    <h1>{{ isEditing ? 'Редактировать заказ' : 'Создать новый заказ' }}</h1>
+  <div class="order-editor" :class="{ 'in-modal': !!isModal }">
+    
 
     <div v-if="hasError" class="status-message error-message">
       ⚠️ Ошибка: {{ errorMessage }}
@@ -149,7 +149,12 @@
         </div>
       </div>
       <div class="order-items-section" :class="{ 'section-invalid': formAttemptedSubmit && !isItemsListValid }">
-        <h2>Позиции заказа</h2>
+        <div class="order-items-header">
+          <h2>Позиции заказа</h2>
+          <button type="button" class="button add-button" @click="addOrderItem" title="Добавить позицию">
+            <span class="material-symbols-outlined">add</span>
+          </button>
+        </div>
         <div v-if="formAttemptedSubmit && !isItemsListValid" class="invalid-feedback text-center">
           Добавьте хотя бы одну валидную позицию заказа.
         </div>
@@ -160,9 +165,6 @@
           </OrderItemForm>
         </div>
         <div v-else>
-          <button type="button" @click="addOrderItem" class="btn btn-success btn-sm">
-            Добавить позицию
-          </button>
           <div v-if="orderData.order_items.length === 0" class="text-muted mt-2">
             Позиции заказа еще не добавлены.
           </div>
@@ -190,16 +192,14 @@
         <button type="submit" class="btn btn-primary" :disabled="!isFormValid || showItemForm">
           {{ isEditing ? 'Сохранить изменения' : 'Создать заказ' }}
         </button>
-        <button type="button" class="btn btn-secondary" @click="cancelEdit">
-          Отмена
-        </button>
+      
       </div>
     </form>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, defineProps, defineEmits } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/orderStore';
 import { useMaterialStore } from '@/stores/materialStore';
@@ -213,8 +213,18 @@ const route = useRoute();
 const orderStore = useOrderStore();
 const materialStore = useMaterialStore();
 const calculationStore = useCalculationStore();
-const orderId = route.params.id ? Number(route.params.id) : null;
-const isEditing = computed(() => !!orderId);
+
+
+const props = defineProps<{ isModal?: boolean; modalOrderId?: number | null }>();
+const emit = defineEmits(['close', 'saved']);
+
+const orderId = computed<number | null>(() => {
+  if (props.modalOrderId !== undefined) {
+    return props.modalOrderId === null ? null : Number(props.modalOrderId);
+  }
+  return route.params.id ? Number(route.params.id) : null;
+});
+const isEditing = computed(() => !!orderId.value);
 const isLoading = ref(false);
 const hasError = ref(false);
 const errorMessage = ref<string | null>(null);
@@ -282,7 +292,7 @@ const paymentTypes = [
   { value: AdvancePaymentType.CASHLESS, text: 'Безналичные' },
 ];
 
-// Функции для работы с расчетами
+
 const getCalculationClientName = (calculation: CalculationHistory): string => {
   if (calculation.client_info && typeof calculation.client_info === 'object' && 'full_name' in calculation.client_info) {
     return String(calculation.client_info.full_name);
@@ -317,7 +327,7 @@ const handleCalculationChange = () => {
     );
 
     if (selectedCalculation) {
-      // Автоматически заполняем поля из расчета
+
       if (selectedCalculation.form?.selectedClient?.id) {
         orderData.value.client = selectedCalculation.form.selectedClient.id;
       }
@@ -331,12 +341,12 @@ const handleCalculationChange = () => {
         const totalCost = getCalculationTotalCost(selectedCalculation);
         orderData.value.total_amount = totalCost;
       }
-      // Устанавливаем начальный статус
+
       if (!orderData.value.status) {
         orderData.value.status = OrderStatus.NEW;
       }
 
-      // Добавляем базовый элемент заказа, если их нет
+
       if (orderData.value.order_items.length === 0) {
         orderData.value.order_items = [{
           _tempId: nextNewItemId--,
@@ -362,8 +372,8 @@ onMounted(async () => {
       calculationStore.loadHistory(),
     ]);
 
-    if (isEditing.value && orderId !== null) {
-      await orderStore.fetchOrderById(orderId);
+    if (isEditing.value && orderId.value !== null) {
+      await orderStore.fetchOrderById(orderId.value);
       if (orderStore.selectedOrder) {
         const selected = orderStore.selectedOrder;
         orderData.value = {
@@ -403,7 +413,7 @@ onMounted(async () => {
         orderData.value.material_quantity = Number(productArea);
         orderData.value.status = OrderStatus.NEW;
 
-        // Пытаемся найти соответствующий расчет по параметрам
+
         const matchingCalculation = availableCalculations.value.find(calc => {
           const calcClientId = calc.form?.selectedClient?.id;
           const calcMaterialId = calc.form?.selectedMaterial?.id;
@@ -421,7 +431,7 @@ onMounted(async () => {
           orderData.value.calculation_id = typeof calcId === 'number' ? calcId : null;
         }
 
-        // Добавляем базовый элемент заказа
+
         orderData.value.order_items = [{
           _tempId: nextNewItemId--,
           product_name: 'Изделие из камня (по расчету)',
@@ -514,7 +524,7 @@ const preparePayload = () => {
     delete payload.id;
   }
 
-  // Удаляем calculation_id, так как отправляем calculation
+
   delete payload.calculation_id;
 
   return payload;
@@ -540,15 +550,20 @@ const saveOrder = async () => {
 
     let result: Order | null = null;
 
-    if (isEditing.value && orderId !== null) {
-      result = await orderStore.updateOrder(orderId, payload);
+    if (isEditing.value && orderId.value !== null) {
+      result = await orderStore.updateOrder(orderId.value, payload);
     } else {
       result = await orderStore.createOrder(payload);
     }
 
     if (result) {
       orderStore.clearSelectedOrder();
-      router.push('/orders');
+      if (props.isModal) {
+        emit('saved');
+        emit('close');
+      } else {
+        router.push('/orders');
+      }
     } else {
       errorMessage.value = 'Не удалось получить данные сохраненного заказа.';
     }
@@ -561,7 +576,11 @@ const saveOrder = async () => {
 
 const cancelEdit = () => {
   orderStore.clearSelectedOrder();
-  router.push('/orders');
+  if (props.isModal) {
+    emit('close');
+  } else {
+    router.push('/orders');
+  }
 };
 
 const addOrderItem = () => {
@@ -639,32 +658,41 @@ const handleItemCancel = () => {
 
 </script>
 <style scoped>
-/* Общие стили контейнера */
+
 .order-editor {
   padding: 20px;
   max-width: 800px;
-  /* Немного увеличена максимальная ширина */
+  
   margin: 20px auto;
   font-family: 'Arial', sans-serif;
-  /* Изменен шрифт на более общий */
+  
   color: #333;
   background-color: #ffffff;
-  /* Белый фон */
+  
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  /* Более мягкая тень */
+  
+}
+
+.order-editor.in-modal {
+  
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 h1 {
   color: #007bff;
-  /* Основной синий цвет */
+  
   text-align: center;
   margin-bottom: 25px;
   font-size: 2rem;
   font-weight: 600;
 }
 
-/* Сообщения состояния */
+
 .status-message {
   padding: 12px;
   border-radius: 5px;
@@ -684,18 +712,18 @@ h1 {
 
 .error-message {
   background-color: #f8d7da;
-  /* Светло-красный фон */
+  
   color: #721c24;
-  /* Темно-красный текст */
+  
   border: 1px solid #f5c6cb;
-  /* Красная рамка */
+  
 }
 
-/* Спиннер */
+
 .loader {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #007bff;
-  /* Цвет спиннера */
+  
   border-radius: 50%;
   width: 18px;
   height: 18px;
@@ -712,39 +740,39 @@ h1 {
   }
 }
 
-/* Стили формы */
+
 .order-form-container {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  /* Расстояние между группами полей */
+  
 }
 
 .form-row {
   display: flex;
   gap: 20px;
-  /* Расстояние между колонками */
+  
   flex-wrap: wrap;
-  /* Перенос на новую строку на узких экранах */
+  
 }
 
 .form-group {
   flex-grow: 1;
-  /* Группа полей может растягиваться */
+  
   display: flex;
   flex-direction: column;
 }
 
 .form-group-half {
   flex-basis: calc(50% - 10px);
-  /* 50% ширины минус половина gap */
+  
   min-width: 150px;
-  /* Минимальная ширина, чтобы избежать слишком сильного сжатия */
+  
 }
 
 .form-group-one-third {
   flex-basis: calc(33.333% - 13.333px);
-  /* ~33% ширины минус часть gap */
+  
   min-width: 120px;
 }
 
@@ -762,7 +790,7 @@ label {
   padding: 10px 12px;
   border: 1px solid #ced4da;
   border-radius: 4px;
-  /* Более стандартный радиус */
+  
   box-sizing: border-box;
   font-size: 1rem;
   color: #495057;
@@ -776,7 +804,7 @@ label {
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-/* Чекбокс для ручного номера заказа */
+
 .form-check {
   display: flex;
   align-items: center;
@@ -794,14 +822,14 @@ label {
 }
 
 
-/* Стили для подсветки обязательных полей */
+
 .required-field label::after {
   content: ' *';
   color: #dc3545;
   margin-left: 4px;
 }
 
-/* Стили для невалидных полей при попытке отправки */
+
 .form-group .form-control.invalid-field {
   border-color: #dc3545 !important;
   box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
@@ -809,51 +837,87 @@ label {
 
 .invalid-feedback {
   display: none;
-  /* Скрываем по умолчанию */
+  
   width: 100%;
   margin-top: 0.25rem;
   font-size: 0.875em;
   color: #dc3545;
-  /* Красный цвет текста */
+  
 }
 
-/* Показываем сообщение при попытке отправки и невалидности */
+
 .form-attempted-submit .invalid-feedback {
   display: block;
 }
 
 
-/* Стили для секции позиций, если есть невалидные позиции или их нет */
+
 .order-items-section.section-invalid {
   border: 1px dashed #dc3545;
-  /* Пунктирная красная рамка вокруг секции */
+  
   padding: 15px;
-  /* Добавляем padding, чтобы рамка не прилипала к контенту */
+  
   border-radius: 8px;
   margin-top: 15px;
-  /* Корректируем верхний отступ */
+  
 }
 
-/* Убираем стандартную верхнюю границу, если показываем рамку */
-/* .order-items-section.section-invalid {
-border-top: 1px dashed #dc3545;
-} */
-/* Стандартная верхняя граница секции */
+
+
+
 .order-items-section {
   margin-top: 25px;
   padding-top: 15px;
   border-top: 1px solid #e9ecef;
 }
 
-
-/* Секция позиций заказа */
-.order-items-section h2 {
-  font-size: 1.5rem;
-  margin-bottom: 15px;
-  color: #007bff;
+.order-items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
 }
 
-/* Контейнер для списка позиций и кнопки "Добавить" */
+
+
+.order-items-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: #007bff;
+  font-weight: 600;
+}
+
+.order-items-header .add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: #4CAF50;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.order-items-header .add-button:hover { background-color: #45a049; }
+
+.order-items-header .add-button .material-symbols-outlined {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
 .order-items-panel {
   width: 100%;
   box-sizing: border-box;
@@ -864,7 +928,7 @@ border-top: 1px dashed #dc3545;
   border-radius: 4px;
   padding: 10px;
   background-color: #f8f9fa;
-  /* Светло-серый фон для списка */
+  
   margin-bottom: 15px;
 }
 
@@ -876,7 +940,7 @@ border-top: 1px dashed #dc3545;
   border-bottom: 1px solid #e9ecef;
   font-size: 0.95rem;
   flex-wrap: wrap;
-  /* Позволяет элементам переноситься */
+  
 }
 
 .order-item-row:last-child {
@@ -893,24 +957,24 @@ border-top: 1px dashed #dc3545;
   flex-shrink: 0;
   margin-left: 5px;
   padding: 4px 8px;
-  /* Меньше padding для кнопок в списке */
+  
   font-size: 0.75rem;
-  /* Меньше шрифт */
+  
 }
 
 .order-item-row button:first-of-type {
   margin-left: auto;
-  /* Прижимает кнопки к правому краю */
+  
 }
 
 .order-item-row span.text-danger {
   font-size: 0.8em;
-  /* Меньший шрифт для индикатора ошибки */
+  
   margin-left: 8px;
 }
 
 
-/* Стили для формы позиции заказа (OrderItemForm) */
+
 .order-item-form-panel {
   width: 100%;
   box-sizing: border-box;
@@ -918,16 +982,15 @@ border-top: 1px dashed #dc3545;
   border-radius: 4px;
   padding: 15px;
   background-color: #f8f9fa;
-  /* Светло-серый фон */
+  
   margin-bottom: 15px;
-  /* Отступ после формы */
+
 }
 
-/* Стили внутри OrderItemForm должны быть определены в самом компоненте OrderItemForm.vue */
-/* Но родительские стили формы (form-group, form-control, invalid-field/feedback) применятся к элементам внутри благодаря class="form-control" и т.п. */
 
 
-/* Контейнер кнопок формы */
+
+
 .form-actions {
   margin-top: 25px;
   padding-top: 15px;
@@ -935,11 +998,14 @@ border-top: 1px dashed #dc3545;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #007bff;
 }
 
 .btn {
+  font-weight: 600;
   padding: 10px 20px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
@@ -989,13 +1055,13 @@ border-top: 1px dashed #dc3545;
   border-color: #bd2130;
 }
 
-/* Состояния disabled для кнопок */
+
 .btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
-/* Стили для описания полей */
+
 .field-description {
   font-size: 0.85rem;
   color: #6c757d;
@@ -1005,7 +1071,7 @@ border-top: 1px dashed #dc3545;
 }
 
 
-/* --- Адаптивность --- */
+
 @media (max-width: 768px) {
   .order-editor {
     padding: 15px;
@@ -1019,13 +1085,13 @@ border-top: 1px dashed #dc3545;
 
   .form-row {
     gap: 15px;
-    /* Уменьшаем gap в рядах */
+    
   }
 
   .form-group-half,
   .form-group-one-third {
     flex-basis: 100%;
-    /* Элементы в рядах становятся в колонку */
+    
     min-width: auto;
   }
 
@@ -1045,7 +1111,7 @@ border-top: 1px dashed #dc3545;
 
   .order-item-row button:first-of-type {
     margin-left: auto;
-    /* Прижимает кнопки к правому краю */
+    
   }
 
   .form-actions {
@@ -1056,7 +1122,7 @@ border-top: 1px dashed #dc3545;
   .form-actions .btn {
     width: 100%;
     margin-bottom: 8px;
-    /* Отступ между кнопками в колонке */
+    
     text-align: center;
   }
 
@@ -1064,7 +1130,7 @@ border-top: 1px dashed #dc3545;
     margin-bottom: 0;
   }
 
-  /* Адаптация иконки валидации */
+  
   .form-control.invalid-field {
     background-position: right calc(0.2em + 0.1875rem) center;
     padding-right: calc(1.5em + 0.6rem);
@@ -1085,7 +1151,7 @@ border-top: 1px dashed #dc3545;
 
   .form-row {
     gap: 10px;
-    /* Еще уменьшаем gap */
+    
   }
 
   .form-control {

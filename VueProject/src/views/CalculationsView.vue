@@ -1,37 +1,29 @@
 <template>
   <div class="order-list-container">
-    <h1>Список расчетов</h1>
-
-    <div class="controls-panel">
-      <input v-model="searchQuery" type="text" placeholder="Поиск по клиенту, материалу, сумме или дате..."
-        class="search-input" />
-      <div class="button-group">
-        <router-link to="/calculations/new" class="button add-button">
-          Добавить новый расчет
+    <div class="header-actions">
+      <h1>Расчеты</h1>
+      <div class="header-buttons">
+  <router-link to="/price-list" class="btn btn-secondary icon-button" title="Прайс-лист">
+          <span class="material-symbols-outlined">settings</span>
         </router-link>
-        <router-link to="/price-list" class="button price-list-button" title="Редактировать прайс-лист">
-          ⚙️ Прайс-лист
-        </router-link>
+        <button type="button" class="btn add-button" title="Добавить расчет" @click="openCreateModal">
+          <span class="material-symbols-outlined">add</span>
+        </button>
       </div>
     </div>
+    <input
+      v-model="searchQuery"
+      type="text"
+      placeholder="Поиск по клиенту, материалу, сумме или дате..."
+      class="search-input full-width-search"
+    />
 
-    <div v-if="calculationStore.isLoading" class="status-message loading-message">
-      <div class="loader"></div> Загрузка расчетов...
-    </div>
-
-    <div v-else-if="validCalculations.length === 0 && searchQuery.trim()" class="status-message no-results-message">
+  <div v-if="validCalculations.length === 0 && searchQuery.trim()" class="status-message no-results-message">
       <p>По запросу "{{ searchQuery }}" ничего не найдено.</p>
       <button @click="searchQuery = ''" class="btn btn-secondary btn-sm">Очистить поиск</button>
     </div>
 
-    <div v-else-if="validCalculations.length === 0" class="status-message no-orders-available">
-      <p class="text-lg mb-4">Пока нет ни одного расчета.</p>
-      <router-link to="/calculations/new" class="button add-button">
-        Создать первый расчет
-      </router-link>
-    </div>
-
-    <div v-else class="table-container">
+  <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -45,8 +37,21 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="validCalculations.length === 0 && !searchQuery.trim()">
+            <td colspan="7" class="table-info-cell">
+              <template v-if="calculationStore.isLoading">
+                <span class="loader-small"></span> Загрузка расчетов...
+              </template>
+              <template v-else>
+                Пока нет ни одного расчета.
+                <button type="button" class="btn btn-success btn-sm" style="margin-left:8px;" @click="openCreateModal">
+                  Создать первый расчет
+                </button>
+              </template>
+            </td>
+          </tr>
           <tr v-for="calculation in validCalculations" :key="calculation.id || calculation.calculationId">
-            <td class="text-center">
+            <td>
               {{ calculation.id || calculation.calculationId }}
             </td>
             <td>
@@ -55,10 +60,10 @@
             <td>
               {{ getMaterialInfo(calculation) }}
             </td>
-            <td class="text-right font-medium">
+            <td class="font-medium">
               {{ formatCurrency(getTotalCost(calculation)) }}
             </td>
-            <td class="text-center">
+            <td>
               <span v-if="calculation.orderId" class="order-link">
                 <router-link :to="`/orders/${calculation.orderId}`" class="btn btn-sm btn-outline-success">
                   Заказ #{{ calculation.orderId }}
@@ -71,21 +76,28 @@
             </td>
             <td class="actions-cell">
               <div class="action-links-container">
-                <router-link :to="`/calculations/${calculation.id || calculation.calculationId}`"
-                  class="btn btn-primary btn-sm" title="Просмотр">
-                  Просмотр
+                <button
+                  @click="openAttachmentModal(calculation.id || calculation.calculationId)"
+                  class="btn btn-info"
+                  title="Вложения"
+                  aria-label="Вложения расчета"
+                >
+                  <span class="material-symbols-outlined">attach_file</span>
+                  <span class="btn-text">Вложения ({{
+                    (calculation.id || calculation.calculationId)
+                      ? attachmentStore.getAttachmentsForCalculation(Number(calculation.id || calculation.calculationId)).length
+                      : 0
+                  }})</span>
+                </button>
+                <router-link
+                  :to="`/calculations/${calculation.id || calculation.calculationId}`"
+                  class="btn btn-primary"
+                  title="Подробнее"
+                  aria-label="Подробнее о расчете"
+                >
+                  <span class="material-symbols-outlined">visibility</span>
+                  <span class="btn-text">Подробнее</span>
                 </router-link>
-                <button @click="openAttachmentModal(calculation.id || calculation.calculationId)"
-                  class="btn btn-info btn-sm" title="Вложения">
-                  Вложения ({{
-                    (calculation.id || calculation.calculationId) ?
-                      attachmentStore.getAttachmentsForCalculation(Number(calculation.id ||
-                        calculation.calculationId)).length : 0 }})
-                </button>
-                <button @click="deleteCalculation(calculation.id || calculation.calculationId)"
-                  class="btn btn-danger btn-sm" title="Удалить">
-                  Удалить
-                </button>
               </div>
             </td>
           </tr>
@@ -103,13 +115,13 @@
           <button @click="attachmentStore.clearAttachmentError()">Закрыть</button>
         </div>
 
-        <div v-else-if="attachmentStore.isLoadingAttachments" class="status-message">
-          Загрузка вложений...
-        </div>
-
-        <div class="attachments-list" v-else>
+        <div class="attachments-list">
           <h3>Существующие вложения:</h3>
-          <div v-if="attachmentsForCurrentCalculation.length === 0"
+          <div v-if="attachmentStore.isLoadingAttachments"
+            class="status-message loading-message-small no-results-message-small">
+            <span class="loader-small"></span> Загрузка вложений...
+          </div>
+          <div v-else-if="attachmentsForCurrentCalculation.length === 0"
             class="status-message no-results-message no-results-message-small">
             Нет вложений для этого расчета.
           </div>
@@ -153,6 +165,11 @@
         </div>
       </div>
     </div>
+
+    <!-- Модальное окно добавления расчета -->
+    <AppModal :is-open="isCreateModalOpen" title="Создать расчет" @close="closeCreateModal" :maxWidth="1100">
+      <CalculationForm :isModal="true" @close="closeCreateModal" @saved="handleCalculationSaved" />
+    </AppModal>
   </div>
 </template>
 
@@ -164,21 +181,39 @@ import { useAttachmentStore } from '@/stores/attachmentStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import type { CalculationHistory } from '@/types/calculation';
 import type { Client } from '@/types/client';
+import AppModal from '@/components/ui/AppModal.vue';
+import CalculationForm from '@/components/calculations/CalculationForm.vue';
 
 const calculationStore = useCalculationStore();
 const clientStore = useClientStore();
 const attachmentStore = useAttachmentStore();
 const notificationStore = useNotificationStore();
 
-// Поисковый запрос
+
 const searchQuery = ref('');
 
-// Модальное окно для вложений
+
 const isAttachmentModalOpen = ref(false);
 const currentCalculationIdForAttachments = ref<number | null>(null);
 const selectedFile = ref<File | null>(null);
 const newAttachmentDescription = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
+
+
+const isCreateModalOpen = ref(false);
+const openCreateModal = () => {
+
+  calculationStore.resetForm();
+  isCreateModalOpen.value = true;
+};
+const closeCreateModal = () => {
+  isCreateModalOpen.value = false;
+};
+const handleCalculationSaved = async () => {
+
+  await calculationStore.loadHistory({ keepCache: false }).catch(() => {});
+  closeCreateModal();
+};
 
 const calculations = computed(() => calculationStore.history);
 
@@ -192,27 +227,27 @@ const attachmentsForCurrentCalculation = computed(() => {
 const validCalculations = computed(() => {
   const filtered = calculations.value.filter(calculation => calculation && (calculation.id || calculation.calculationId));
 
-  // Если есть поисковый запрос, фильтруем результаты
+
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim();
     return filtered.filter(calculation => {
-      // Поиск по имени клиента
+
       const clientName = getClientName(calculation).toLowerCase();
       if (clientName.includes(query)) return true;
 
-      // Поиск по материалу
+
       const materialInfo = getMaterialInfo(calculation).toLowerCase();
       if (materialInfo.includes(query)) return true;
 
-      // Поиск по сумме
+
       const totalCost = getTotalCost(calculation).toString();
       if (totalCost.includes(query)) return true;
 
-      // Поиск по дате
+
       const dateString = formatDate(calculation.createdAt).toLowerCase();
       if (dateString.includes(query)) return true;
 
-      // Поиск по ID расчета
+
       const calculationId = (calculation.id || calculation.calculationId)?.toString();
       if (calculationId?.includes(query)) return true;
 
@@ -224,12 +259,12 @@ const validCalculations = computed(() => {
 });
 
 const getTotalCost = (calculation: CalculationHistory): number => {
-  // Ваш код для getTotalCost остается без изменений
+
   if (calculation.totalCost !== undefined && calculation.totalCost !== null) {
     const cost = typeof calculation.totalCost === 'string' ? parseFloat(calculation.totalCost) : Number(calculation.totalCost);
     return isNaN(cost) ? 0 : cost;
   }
-  // Обработка breakdown, если totalCost не задан
+
   if (calculation.breakdown) {
     let total = 0;
     Object.values(calculation.breakdown).forEach((item: unknown) => {
@@ -265,14 +300,14 @@ const formatDate = (dateString: string | undefined): string => {
   });
 };
 
-// Функция для получения имени клиента
+
 const getClientName = (calculation: CalculationHistory): string => {
-  // 1. Проверяем selectedClient в форме (локально созданные расчеты)
+
   if (calculation.form?.selectedClient) {
     return calculation.form.selectedClient.full_name
   }
 
-  // 2. Проверяем client_info от Django API (корневой уровень)
+
   if (calculation.client_info && typeof calculation.client_info === 'object') {
     const clientInfo = calculation.client_info as Client
     if (clientInfo.full_name) {
@@ -280,7 +315,7 @@ const getClientName = (calculation: CalculationHistory): string => {
     }
   }
 
-  // 3. Проверяем поле client (если это ID клиента)
+
   if (calculation.client && typeof calculation.client === 'number') {
     const foundClient = clientStore.clients.find(c => c.id === calculation.client)
     if (foundClient) {
@@ -288,12 +323,12 @@ const getClientName = (calculation: CalculationHistory): string => {
     }
   }
 
-  // 4. Проверяем clientNameForDisplay (если есть)
+
   if (calculation.clientNameForDisplay && calculation.clientNameForDisplay !== 'Анонимный расчет') {
     return calculation.clientNameForDisplay
   }
 
-  // 5. Если ничего не найдено - расчет анонимный
+
   return 'Анонимный расчет'
 }
 
@@ -315,7 +350,7 @@ const getMaterialInfo = (calculation: CalculationHistory): string => {
 const deleteCalculation = async (calculationId: string | number | undefined) => {
   if (!calculationId) return;
 
-  // Найдем расчет в локальном списке для дополнительной информации
+
   const calculationToDelete = validCalculations.value.find(
     calc => (calc.id || calc.calculationId) === calculationId
   );
@@ -335,11 +370,11 @@ const deleteCalculation = async (calculationId: string | number | undefined) => 
     } catch (error: unknown) {
       console.error('Error deleting calculation:', error);
 
-      // Обработка разных типов ошибок
+
       const errorMessage = (error as Error).message || 'Неизвестная ошибка';
 
       if (errorMessage.includes('404')) {
-        // Если расчет не найден на сервере, удаляем его из локального списка
+
         calculationStore.history = calculationStore.history.filter(
           calc => (calc.id || calc.calculationId) !== calculationId
         );
@@ -361,7 +396,7 @@ const deleteCalculation = async (calculationId: string | number | undefined) => 
   }
 };
 
-// Функции для работы с вложениями
+
 const formatFileSize = (bytes: number | null | undefined, decimalPoint = 2) => {
   if (bytes == null || bytes === 0) return '0 Bytes';
   const k = 1000;
@@ -420,7 +455,7 @@ const handleUploadAttachment = async () => {
       fileInput.value.value = '';
     }
   } catch {
-    // Ошибка уже обрабатывается в store
+
   }
 };
 
@@ -432,21 +467,28 @@ const handleAttachmentDelete = async (attachmentId: number) => {
   try {
     await attachmentStore.deleteAttachment(attachmentId);
   } catch {
-    // Ошибка уже обрабатывается в store
+
   }
 };
 
 onMounted(async () => {
   try {
-    // Очищаем поиск при загрузке страницы
+
     searchQuery.value = '';
 
-    // Загружаем клиентов сначала для возможности поиска по ID
+
     if (clientStore.clients.length === 0) {
       await clientStore.fetchClients();
+    } else {
+      clientStore.fetchClients().catch(() => {});
     }
 
-    await calculationStore.loadHistory();
+
+    if (calculationStore.history.length === 0) {
+      await calculationStore.loadHistory({ keepCache: false });
+    } else {
+      calculationStore.loadHistory({ keepCache: true }).catch(() => {});
+    }
   } catch (error) {
     console.error('Error loading history:', error);
     notificationStore.showNotification('Ошибка при загрузке расчетов', 'error');
@@ -456,14 +498,10 @@ onMounted(async () => {
 
 
 <style scoped>
-/*
-  Все стили из OrdersView.vue скопированы сюда.
-  Некоторые классы были адаптированы в шаблоне, чтобы соответствовать
-  новой структуре и именам из OrdersView.
-*/
+
 .order-list-container {
-  padding: 20px;
-  max-width: 1400px;
+  padding: 20px 24px;
+  max-width: var(--max-container-width);
   margin: 20px auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   box-sizing: border-box;
@@ -473,103 +511,74 @@ onMounted(async () => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
-  color: #007bff;
-  text-align: center;
-  margin-bottom: 25px;
-  font-size: 2rem;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
 
-.controls-panel {
+.header-actions {
   display: flex;
-  flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
   margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
-  flex-wrap: wrap;
+  gap: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 12px;
 }
 
-.search-input {
-  padding: 8px 12px;
+.header-actions h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #007bff;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-buttons .btn.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.header-buttons .btn.icon-button .material-symbols-outlined {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .header-buttons .btn.icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+  }
+  .header-buttons .btn.icon-button .material-symbols-outlined {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+
+
+.full-width-search {
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+  margin-bottom: 20px;
   box-sizing: border-box;
-  flex-grow: 1;
-  min-width: 200px;
-}
-
-.button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  box-sizing: border-box;
-  line-height: 1.4;
-}
-
-.add-button {
-  background-color: #4CAF50;
-  color: white;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  box-sizing: border-box;
-  line-height: 1.4;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.add-button:hover {
-  background-color: #45a049;
-}
-
-/* Группа кнопок */
-.button-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* Кнопка прайс-листа - менее заметная */
-.price-list-button {
-  background-color: #6c757d;
-  color: white;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  box-sizing: border-box;
-  line-height: 1.4;
-  white-space: nowrap;
-  flex-shrink: 0;
-  opacity: 0.8;
-  border-radius: 4px;
-}
-
-.price-list-button:hover {
-  background-color: #5a6268;
-  opacity: 1;
 }
 
 .btn {
@@ -579,92 +588,34 @@ h1 {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
   text-decoration: none;
-  display: inline-block;
   text-align: center;
-  vertical-align: middle;
-  box-sizing: border-box;
-  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  gap: 8px;
 }
+
+.btn:hover { opacity: 0.85; }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: #1976d2;
   color: white;
-  border-color: #007bff;
+  border-color: #1976d2;
 }
 
-.btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #0056b3;
-}
+.btn-success { background-color: #28a745; color: white; }
 
-.btn-success {
-  background-color: #28a745;
-  color: white;
-  border-color: #28a745;
-}
+.btn-outline-success { background-color: transparent; color: #28a745; border-color: #28a745; }
 
-.btn-success:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
+.btn-warning { background-color: #ffc107; color: #333; }
 
-.btn-outline-success {
-  background-color: transparent;
-  color: #28a745;
-  border-color: #28a745;
-}
+.btn-danger { background-color: #dc3545; color: white; }
 
-.btn-outline-success:hover {
-  background-color: #28a745;
-  color: white;
-  border-color: #28a745;
-}
+.btn-secondary { background-color: #6c757d; color: white; }
 
-.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-  border-color: #ffc107;
-}
-
-.btn-warning:hover {
-  background-color: #e0a800;
-  border-color: #d39e00;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: white;
-  border-color: #dc3545;
-}
-
-.btn-danger:hover {
-  background-color: #c82333;
-  border-color: #bd2130;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
-  border-color: #545b62;
-}
-
-.btn-info {
-  background-color: #17a2b8;
-  color: white;
-  border-color: #17a2b8;
-}
-
-.btn-info:hover {
-  background-color: #138496;
-  border-color: #117a8b;
-}
+.btn-info { background-color: #17a2b8; color: white; }
 
 .btn-sm {
   padding: 4px 8px;
@@ -746,27 +697,9 @@ h1 {
   }
 }
 
-.loader-small {
-  display: inline-block;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  width: 12px;
-  height: 12px;
-  animation: spin 0.8s linear infinite;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-
-.btn-danger .loader-small {
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
-}
-
-.status-message .loader-small {
-  border: 2px solid rgba(133, 100, 4, 0.3);
-  border-top-color: #856404;
-}
+.loader-small { display: inline-block; border: 2px solid rgba(0, 0, 0, 0.1); border-top-color: #007bff; border-radius: 50%; width: 14px; height: 14px; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+.btn-danger .loader-small { border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff; }
+.status-message .loader-small { border: 2px solid rgba(133, 100, 4, 0.3); border-top-color: #856404; }
 
 .table-container {
   border: 1px solid #e0e0e0;
@@ -784,7 +717,7 @@ h1 {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1000px;
+  min-width: 900px;
 }
 
 thead {
@@ -801,6 +734,7 @@ td {
   vertical-align: middle;
   word-break: break-word;
   white-space: normal;
+  min-height: 30px;
 }
 
 th {
@@ -861,113 +795,21 @@ th {
 
 th.col-id,
 td:nth-child(1) {
-  text-align: center;
+  text-align: left;
   width: 60px;
   min-width: 60px;
 }
 
-th.col-order-date,
-td:nth-child(2) {
-  min-width: 120px;
-}
+th.col-client, td:nth-child(2) { min-width: 140px; }
+th.col-material, td:nth-child(3) { min-width: 140px; }
+th.col-amount, td:nth-child(4) { min-width: 100px; text-align: left; }
+th.col-order, td:nth-child(5) { min-width: 120px; text-align: left; }
+th.col-order-date, td:nth-child(6) { min-width: 120px; }
 
-th.col-client,
-td:nth-child(3) {
-  min-width: 150px;
-}
+th.col-actions { width: auto; min-width: 150px; text-align: center; }
+td.actions-cell { width: auto; min-width: 150px; text-align: center; vertical-align: middle; }
 
-th.col-material,
-td:nth-child(3) {
-  min-width: 150px;
-}
 
-th.col-amount,
-td:nth-child(4) {
-  min-width: 100px;
-  text-align: right;
-}
-
-th.col-order,
-td:nth-child(5) {
-  min-width: 100px;
-  text-align: center;
-}
-
-th.col-order-date,
-td:nth-child(6) {
-  min-width: 120px;
-}
-
-th.col-actions,
-td.actions-cell {
-  width: auto;
-  min-width: 150px;
-  text-align: center;
-  vertical-align: middle;
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  flex-shrink: 0;
-  min-width: 60px;
-  text-align: center;
-}
-
-.status-new {
-  background-color: #bbdefb;
-  color: #0d47a1;
-}
-
-.status-confirmed {
-  background-color: #c8e6c9;
-  color: #1b5e20;
-}
-
-.status-pending {
-  background-color: #fff9c4;
-  color: #f57f17;
-}
-
-.status-in-progress {
-  background-color: #d1c4e9;
-  color: #4a148c;
-}
-
-.status-ready {
-  background-color: #b3e5fc;
-  color: #01579b;
-}
-
-.status-waiting {
-  background-color: #ffccbc;
-  color: #bf360c;
-}
-
-.status-installation {
-  background-color: #f8bbd0;
-  color: #880e4f;
-}
-
-.status-completed {
-  background-color: #a5d6a7;
-  color: #1b5e20;
-}
-
-.status-cancelled {
-  background-color: #cfd8dc;
-  color: #37474f;
-}
-
-.status-unknown {
-  background-color: #e0e0e0;
-  color: #666;
-}
 
 .order-link .btn {
   padding: 2px 6px;
@@ -983,65 +825,27 @@ td.actions-cell {
   text-align: center;
 }
 
-.action-links-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+
+td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-info, .btn-warning, .btn-danger) {
+  display: inline-flex;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.action-links-container .btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  font-size: 0;
-  line-height: 32px;
-  text-align: center;
-  overflow: hidden;
-  position: relative;
-  flex-shrink: 0;
+.action-links-container { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.actions-cell .btn { font-size: 12px; font-weight: 500; padding: 7px 13px; line-height: 1; letter-spacing: normal; text-transform: none; }
+.actions-cell .btn .material-symbols-outlined {
+  font-size: 24px;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  margin: 0;
 }
-
-.action-links-container .btn::before {
-  content: '?';
-  font-size: 16px;
-  font-family: sans-serif;
-  line-height: 1;
+.actions-cell .btn .btn-text {
+  margin: 0;
   display: inline-block;
   vertical-align: middle;
-  font-size: 16px !important;
 }
-
-.action-links-container .btn-warning::before {
-  content: '\270E';
-  color: #212529;
-}
-
-.action-links-container .btn-info::before {
-  content: '\1F4CE';
-  color: white;
-}
-
-.action-links-container .btn-primary::before {
-  content: '\2139';
-  color: white;
-}
-
-.action-links-container .btn-danger::before {
-  content: '\1F5D1';
-  color: white;
-}
-
-.action-links-container .btn.btn-sm {
-  padding: 0 !important;
-  font-size: 0 !important;
-}
+.actions-cell .btn .btn-text { display: inline; font-size: inherit; font-weight: inherit; line-height: inherit; letter-spacing: inherit; text-transform: inherit; }
 
 .delete-attachment-button {
   margin-left: auto;
@@ -1263,38 +1067,10 @@ td.actions-cell {
 }
 
 @media (max-width: 1200px) {
-  .order-list-container {
-    padding: 15px;
-  }
-
-  h1 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-  }
-
-  .controls-panel {
-    gap: 15px;
-  }
-
-  .add-button {
-    padding: 8px 16px;
-    font-size: 0.9rem;
-  }
-
-  .price-list-button {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-
-  .button {
-    padding: 5px 10px;
-    font-size: 11px;
-  }
-
-  .btn-sm {
-    padding: 3px 7px;
-    font-size: 10px;
-  }
+  .order-list-container { padding: 15px; }
+  .header-actions h1 { font-size: 1.7rem; }
+  
+  .actions-cell .btn { padding: 5px 10px; font-size: 11px; }
 
   th,
   td {
@@ -1342,15 +1118,7 @@ td.actions-cell {
     min-width: 140px;
   }
 
-  .action-links-container .btn {
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
-  }
-
-  .action-links-container .btn::before {
-    font-size: 15px !important;
-  }
+  .actions-cell .btn .material-symbols-outlined { font-size: 16px; }
 
   .status-badge {
     min-width: 50px;
@@ -1417,12 +1185,7 @@ td.actions-cell {
     min-width: unset;
   }
 
-  .add-button {
-    width: 100%;
-    text-align: center;
-    padding: 10px 20px;
-    font-size: 1rem;
-  }
+  
 
   .price-list-button {
     width: 100%;
@@ -1500,15 +1263,7 @@ td.actions-cell {
     font-size: 11px;
   }
 
-  .btn {
-    padding: 5px 10px;
-    font-size: 0.85rem;
-  }
-
-  .btn-sm {
-    padding: 2px 6px;
-    font-size: 9px;
-  }
+  .btn { padding: 5px 10px; font-size: 0.85rem; }
 
   .modal-content {
     max-width: 500px;
@@ -1544,18 +1299,9 @@ td.actions-cell {
 }
 
 @media (max-width: 768px) {
-  .order-list-container {
-    padding: 10px;
-  }
-
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 15px;
-  }
-
-  .controls-panel {
-    gap: 10px;
-  }
+  .order-list-container { padding: 10px; }
+  .header-actions h1 { font-size: 1.6rem; text-align: center; }
+  .add-button { margin-left: auto; }
 
   .status-message {
     flex-direction: column;
@@ -1611,19 +1357,18 @@ td.actions-cell {
 
   th.col-actions,
   td.actions-cell {
-    min-width: 120px;
+    min-width: 100px;
+  }
+
+  .action-links-container {
+    flex-direction: row;
+    flex-wrap: nowrap;
     gap: 6px;
   }
 
-  .action-links-container .btn {
-    width: 28px;
-    height: 28px;
-    line-height: 28px;
-  }
-
-  .action-links-container .btn::before {
-    font-size: 14px !important;
-  }
+  .actions-cell .btn { width: 32px; height: 32px; padding: 0; font-size: 0; min-height: auto; border-radius: 4px; }
+  .actions-cell .btn .material-symbols-outlined { font-size: 20px; }
+  .actions-cell .btn .btn-text { display: none; }
 
   .status-badge {
     min-width: 40px;
@@ -1683,18 +1428,8 @@ td.actions-cell {
 }
 
 @media (max-width: 480px) {
-  .order-list-container {
-    padding: 8px;
-  }
-
-  h1 {
-    font-size: 1.4rem;
-    margin-bottom: 12px;
-  }
-
-  .controls-panel {
-    gap: 8px;
-  }
+  .order-list-container { padding: 8px; }
+  .header-actions h1 { font-size: 1.4rem; }
 
   .status-message {
     gap: 6px;
@@ -1747,15 +1482,8 @@ td.actions-cell {
     gap: 5px;
   }
 
-  .action-links-container .btn {
-    width: 26px;
-    height: 26px;
-    line-height: 26px;
-  }
-
-  .action-links-container .btn::before {
-    font-size: 13px !important;
-  }
+  .actions-cell .btn { width: 28px; height: 28px; }
+  .actions-cell .btn .material-symbols-outlined { font-size: 18px; }
 
   .status-badge {
     min-width: 35px;

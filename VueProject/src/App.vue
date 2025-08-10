@@ -5,7 +5,7 @@
       <div class="container">
         <router-view />
       </div>
-      <app-footer />
+  <app-footer v-if="!$route.meta.hideHeader" />
       <app-notification :show="notificationStore.isVisible" :message="notificationStore.message"
         :type="notificationStore.type" />
     </template>
@@ -28,13 +28,13 @@ const notificationStore = useNotificationStore();
 const isAppReady = ref(false);
 
 onMounted(async () => {
-  // Если на странице авторизации - сразу готово к отображению
+
   if (route.path === '/login') {
     isAppReady.value = true;
     return;
   }
 
-  // Проверка аутентификации для других страниц
+
   if (!authStore.isAuthenticated) {
     await router.push('/login');
   }
@@ -67,22 +67,25 @@ body {
 }
 
 .container {
-  padding: 20px;
-  max-width: 1200px;
+  
+  padding: 0 24px;
+  max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
   flex-grow: 1;
 }
 
 @media (max-width: 768px) {
   .container {
-    padding: 15px;
+    
+    padding: 0 12px;
     max-width: 100%;
   }
 }
 
 @media (max-width: 480px) {
   .container {
-    padding: 10px;
+    padding: 0 12px;
   }
 }
 </style>

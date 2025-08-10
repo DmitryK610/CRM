@@ -16,15 +16,15 @@ export const useMaterialStore = defineStore('material', () => {
   const materials = ref<Material[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  // Инициализация курса доллара из localStorage, если есть сохранённое значение
+
   const dollarRateStorageKey = 'dollarRate'
   const savedDollarRate = localStorage.getItem(dollarRateStorageKey)
   const dollarRate = ref(savedDollarRate ? Number(savedDollarRate) : 100)
 
-  // Добавляем вычисляемое свойство для проверки валидности курса доллара
+
   const isDollarRateValid = computed(() => dollarRate.value > 0)
 
-  // Следим за изменением курса доллара и сохраняем в localStorage
+
   watch(dollarRate, (newRate: number) => {
     localStorage.setItem(dollarRateStorageKey, String(newRate))
   })
@@ -54,15 +54,19 @@ export const useMaterialStore = defineStore('material', () => {
     error.value = apiErrorMessage
   }
 
-  async function fetchMaterials(): Promise<void> {
+  async function fetchMaterials(options?: { keepCache?: boolean }): Promise<void> {
+    const keepCache = options?.keepCache ?? true
     isLoading.value = true
     error.value = null
+    if (!keepCache) {
+      materials.value = []
+    }
     try {
       const fetchedMaterials = await materialApi.getMaterials()
-      // Убеждаемся, что получили массив
+
       materials.value = Array.isArray(fetchedMaterials) ? fetchedMaterials : []
     } catch (err) {
-      // В случае ошибки устанавливаем пустой массив
+
       materials.value = []
       handleError(err, 'загрузке материалов')
     } finally {
@@ -107,7 +111,7 @@ export const useMaterialStore = defineStore('material', () => {
       const newMaterial = await materialApi.createMaterial(apiData)
 
       if (newMaterial) {
-        // Убеждаемся, что materials.value является массивом
+
         if (!Array.isArray(materials.value)) {
           materials.value = []
         }
@@ -149,7 +153,7 @@ export const useMaterialStore = defineStore('material', () => {
 
       const updatedMaterial = await materialApi.updateMaterial(id, apiData)
       if (updatedMaterial) {
-        // Убеждаемся, что materials.value является массивом
+
         if (!Array.isArray(materials.value)) {
           materials.value = []
         }
@@ -172,7 +176,7 @@ export const useMaterialStore = defineStore('material', () => {
     error.value = null
     try {
       await materialApi.deleteMaterial(id)
-      // Убеждаемся, что materials.value является массивом
+
       if (!Array.isArray(materials.value)) {
         materials.value = []
       }
@@ -190,7 +194,7 @@ export const useMaterialStore = defineStore('material', () => {
     error.value = null
   }
 
-  // Метод для проверки и установки валидного значения курса доллара
+
   function ensureValidDollarRate() {
     if (!isDollarRateValid.value) {
       dollarRate.value = 100 // Сбрасываем на умолчание, если некорректно

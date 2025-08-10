@@ -2,7 +2,7 @@
 <template>
   <teleport to="body">
     <div v-if="isOpen" class="modal-backdrop" @click.self="closeModal">
-      <div class="modal-content">
+      <div class="modal-content" :style="{ width: computedWidth, maxHeight: '90vh' }">
         <div class="modal-header">
           <h3>{{ title }}</h3>
           <button type="button" class="close-button" @click="closeModal">&times;</button>
@@ -19,9 +19,9 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, computed } from 'vue';
 
-defineProps({
+const props = defineProps({
   isOpen: {
     type: Boolean,
     required: true,
@@ -30,6 +30,12 @@ defineProps({
     type: String,
     default: 'Информация',
   },
+
+
+  maxWidth: {
+    type: [String, Number],
+    default: undefined,
+  },
 });
 
 const emit = defineEmits(['close']);
@@ -37,6 +43,14 @@ const emit = defineEmits(['close']);
 const closeModal = () => {
   emit('close');
 };
+
+
+const computedWidth = computed(() => {
+  const max = props.maxWidth !== undefined
+    ? (typeof props.maxWidth === 'number' ? `${props.maxWidth}px` : props.maxWidth)
+    : '900px';
+  return `min(95vw, ${max})`;
+});
 </script>
 
 <style scoped>
@@ -50,7 +64,7 @@ const closeModal = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; /* Ensure it's on top of other content */
+  z-index: 1000; 
 }
 
 .modal-content {
@@ -58,23 +72,16 @@ const closeModal = () => {
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  width: 90%;
-  max-width: 600px;
+  
+  max-width: none;
+  display: flex;
+  flex-direction: column;
   transition: transform 0.3s ease-out;
   transform: translateY(0);
 }
 
-/* Анимация появления (можно добавить при необходимости) */
-/* .modal-backdrop.fade-enter-active .modal-content,
-.modal-backdrop.fade-leave-active .modal-content {
-  transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-}
 
-.modal-backdrop.fade-enter-from .modal-content,
-.modal-backdrop.fade-leave-to .modal-content {
-  transform: translateY(-50px);
-  opacity: 0;
-} */
+
 
 .modal-header {
   padding: 15px;
@@ -87,8 +94,10 @@ const closeModal = () => {
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.2em;
-  color: #333;
+  font-weight: 600;
+  font-size: 1.8em;
+  color: #007bff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .close-button {
@@ -107,6 +116,8 @@ const closeModal = () => {
 
 .modal-body {
   padding: 20px;
+  overflow: auto; 
+  flex: 1 1 auto; 
 }
 
 .modal-footer {
@@ -116,5 +127,36 @@ const closeModal = () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+
+@media (max-width: 768px) {
+  .modal-content {
+    border-radius: 8px;
+  }
+  .modal-header {
+    padding: 10px 12px;
+  }
+  .modal-header h3 {
+    font-size: 1.6em; 
+  }
+  .modal-body {
+    padding: 12px; 
+  }
+  .modal-footer {
+    padding: 10px 12px; 
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    border-radius: 6px;
+  }
+  .modal-header h3 {
+    font-size: 1.4em; 
+  }
+  .modal-body {
+    padding: 10px; 
+  }
 }
 </style>

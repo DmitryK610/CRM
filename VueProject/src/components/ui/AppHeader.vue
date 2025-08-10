@@ -2,18 +2,27 @@
   <header class="app-header">
     <div class="container">
       <router-link to="/" class="logo">
-        <img src="/crm logo.png" alt="CRM Логотип" class="logo-image">
+        <img src="/crm logo.png" alt="CRM Логотип" class="logo-image" />
       </router-link>
 
-      <nav>
-        <router-link to="/dashboard" active-class="active">Панель управления</router-link>
-        <router-link to="/orders" active-class="active">Заказы</router-link>
-        <router-link to="/clients" active-class="active">Клиенты</router-link>
-        <router-link to="/calculations" active-class="active">Расчеты</router-link>
-        <router-link to="/suppliers" active-class="active">Поставщики</router-link>
-        <!-- <router-link to="/employees" active-class="active">Сотрудники</router-link> -->
-        <router-link to="/materials" active-class="active">Материалы</router-link>
-        <!-- <router-link to="/financial" active-class="active">Финансы</router-link> -->
+      <button
+        class="menu-toggle"
+        @click="toggleMenu"
+        :aria-expanded="isMenuOpen"
+        aria-label="Открыть/закрыть меню навигации"
+      >
+        <span class="material-symbols-outlined menu-icon">{{
+          isMenuOpen ? 'close' : 'menu'
+        }}</span>
+      </button>
+
+      <nav :class="{ 'nav-open': isMenuOpen }">
+        <router-link to="/dashboard" active-class="active" @click="onNavClick">Заказы в работе</router-link>
+        <router-link to="/orders" active-class="active" @click="onNavClick">Заказы</router-link>
+        <router-link to="/clients" active-class="active" @click="onNavClick">Клиенты</router-link>
+        <router-link to="/calculations" active-class="active" @click="onNavClick">Расчеты</router-link>
+        <router-link to="/suppliers" active-class="active" @click="onNavClick">Поставщики</router-link>
+        <router-link to="/materials" active-class="active" @click="onNavClick">Материалы</router-link>
       </nav>
 
       <div class="auth-section">
@@ -32,11 +41,21 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const isMenuOpen = ref(false);
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+};
+
+const onNavClick = () => {
+  isMenuOpen.value = false;
+};
 
 const logout = async () => {
   await authStore.logout();
@@ -44,147 +63,101 @@ const logout = async () => {
 };
 </script>
 
-
 <style scoped>
-/* --- Базовые стили хедера --- */
 .app-header {
   background-color: #343a40;
-  /* Темный фон для контраста (темно-серый) */
   border-bottom: 1px solid #495057;
-  /* Граница темнее, соответствующая фону */
   padding: 12px 0;
-  /* Вертикальные отступы */
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
-  /* Более выраженная тень на темном фоне */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-/* --- Контейнер для центрирования контента --- */
 .container {
   max-width: 1400px;
-  /* Та же ширина, что и у client-list-view */
   margin: 0 auto;
   padding: 0 24px;
-  /* Горизонтальные отступы, как у client-list-view */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Распределяем элементы */
-  flex-wrap: wrap;
-  /* Разрешаем перенос на маленьких экранах */
   gap: 16px;
-  /* Пространство между лого/нав/аутентификацией */
 }
 
-/* --- Логотип --- */
 .logo {
   text-decoration: none;
   color: #f8f9fa;
-  /* Светлый цвет текста для темного фона */
   font-size: 22px;
-  /* Увеличенный размер шрифта */
   font-weight: 700;
-  /* Сделаем чуть жирнее */
   flex-shrink: 0;
-  /* Не сжимать логотип */
   display: flex;
   align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .logo-image {
-  height: 50px;
-  /* Фиксированная высота под хедер */
+  height: 56px;
   width: auto;
-  /* Автоматическая ширина для сохранения пропорций */
-  max-width: 120px;
-  /* Максимальная ширина чтобы не растягивать хедер */
+  max-width: 280px;
   object-fit: contain;
-  /* Сохраняем пропорции изображения */
+  filter: brightness(1.1);
   border-radius: 5px;
 }
 
-.logo span {
-  vertical-align: middle;
-}
-
-/* --- Навигация --- */
 nav {
   display: flex;
   gap: 12px;
-  /* Увеличиваем пространство между ссылками */
   align-items: center;
   flex-grow: 1;
-  /* Позволяем навигации занимать место */
   flex-wrap: wrap;
-  /* Позволяем ссылкам переноситься */
   justify-content: center;
-  /* Центрируем ссылки, если они переносятся */
 }
 
 nav a {
   text-decoration: none;
   color: #ced4da;
-  /* Светлый цвет ссылок, не чисто белый */
   padding: 10px 14px;
-  /* Увеличиваем кликабельную область и отступы */
   border-radius: 4px;
   font-size: 16px;
-  /* Увеличенный размер шрифта */
   font-weight: 500;
   transition: background-color 0.2s, color 0.2s;
   border-bottom: 2px solid transparent;
-  /* Место для активного индикатора */
   white-space: nowrap;
-  /* Предотвращаем перенос текста в ссылке */
 }
 
 nav a:hover {
   background-color: #495057;
-  /* Легкий фон при наведении (темнее текущего фона) */
   color: #ffffff;
-  /* Чисто белый цвет при наведении */
 }
 
-/* Стиль активной ссылки */
 nav a.active {
   color: #89cff0;
-  /* Ярко-синий цвет для активной ссылки */
   font-weight: 600;
   border-bottom-color: #89cff0;
-  /* Подчеркивание активной ссылки */
-  /* background-color: #495057; */
-  /* Альтернатива: фон */
 }
 
-/* --- Секция аутентификации --- */
 .auth-section {
   display: flex;
   align-items: center;
   gap: 16px;
-  /* Увеличиваем пространство между элементами */
   flex-shrink: 0;
-  /* Не сжимать секцию */
 }
 
 .auth-section span {
   font-size: 16px;
-  /* Увеличенный размер шрифта */
   color: #ced4da;
-  /* Светлый цвет текста */
   white-space: nowrap;
-  /* Избегаем переноса приветствия */
 }
 
-/* --- Кнопки входа/выхода --- */
 .login-button,
 .logout-button {
-  /* Заимствуем стили базовой кнопки, но делаем чуть компактнее */
   padding: 8px 16px;
-  /* Увеличиваем отступы */
   border: none;
   border-radius: 4px;
   font-size: 14px;
-  /* Увеличенный размер шрифта */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -195,200 +168,195 @@ nav a.active {
   white-space: nowrap;
 }
 
+
+.menu-toggle {
+  display: none;
+}
+
 .login-button:hover,
 .logout-button:hover {
   opacity: 0.9;
-  /* Небольшое изменение прозрачности при наведении */
 }
 
 .login-button {
   background-color: #007bff;
-  /* Синий, более яркий для темного фона */
   color: white;
 }
 
 .logout-button {
   background-color: #dc3545;
-  /* Красный, более яркий для темного фона */
   color: white;
-  /* Альтернатива: нейтральный цвет */
-  /* background-color: #6c757d; */
-  /* color: white; */
 }
 
 
-/* --- Медиазапросы для адаптивности --- */
-
-/* Планшеты */
 @media (max-width: 992px) {
   .container {
     padding: 0 20px;
-    /* Уменьшаем горизонтальные отступы */
     gap: 12px;
   }
 
   nav {
     gap: 8px;
-    /* Уменьшаем отступы в навигации */
     justify-content: flex-start;
-    /* Начинаем слева, если переносится */
   }
 
   nav a {
     padding: 8px 12px;
     font-size: 15px;
-    /* Корректируем размер шрифта */
   }
 
   .logo {
     font-size: 20px;
-    /* Корректируем размер лого */
   }
 
   .logo-image {
-    height: 36px;
-    /* Уменьшаем высоту для планшетов */
-    max-width: 100px;
+    height: 48px;
+    max-width: 240px;
   }
 
   .auth-section span {
     font-size: 15px;
-    /* Корректируем размер шрифта */
   }
 
   .login-button,
   .logout-button {
     padding: 6px 14px;
     font-size: 13px;
-    /* Корректируем размер шрифта */
   }
 }
 
-/* Мобильные телефоны */
+
 @media (max-width: 768px) {
   .app-header {
     padding: 10px 0;
+    width: 100%;
   }
 
   .container {
-    padding: 0 16px;
-    /* Лого и Аутентификация могут остаться сверху, навигация уйдет ниже */
+    padding: 0 12px;
+    flex-direction: row;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
   }
 
-  /* Прячем основную навигацию или делаем ее скроллящейся */
-  nav {
-    /* Вариант 1: Горизонтальный скролл */
-    order: 3;
-    /* Помещаем навигацию под лого и аутентификацией */
-    width: 100%;
-    /* Занимаем всю ширину */
-    overflow-x: auto;
-    /* Включаем горизонтальный скролл */
-    overflow-y: hidden;
-    /* Скрываем вертикальный скролл */
+  .logo {
     justify-content: flex-start;
-    /* Начинаем слева */
-    padding-bottom: 8px;
-    /* Отступ снизу для скроллбара */
-    gap: 0;
-    /* Убираем gap, т.к. padding уже есть */
-    scrollbar-width: thin;
-    /* Тонкий скроллбар для Firefox */
-    scrollbar-color: #6c757d #343a40;
-    /* Цвет скроллбара под темный фон */
+    flex-grow: 1;
   }
 
-  /* Стилизация скроллбара для WebKit (Chrome, Safari) */
-  nav::-webkit-scrollbar {
-    height: 5px;
-    /* Высота скроллбара */
+  .logo-image {
+    height: 40px;
+    max-width: 160px;
   }
 
-  nav::-webkit-scrollbar-track {
-    background: #343a40;
-    /* Фон трека под темный фон */
-    border-radius: 4px;
+  .menu-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ced4da;
   }
 
-  nav::-webkit-scrollbar-thumb {
-    background-color: #6c757d;
-    /* Цвет ползунка под темный фон */
-    border-radius: 4px;
-    /* Скругление */
+  .menu-icon {
+    font-size: 24px;
+    line-height: 1;
   }
 
-  nav::-webkit-scrollbar-thumb:hover {
-    background-color: #868e96;
-    /* Цвет при наведении */
+  nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #3a3f44;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 12px;
+    border-bottom: 1px solid #495057;
+    z-index: 1000;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform: translateY(-10px);
+    opacity: 0;
   }
 
+  nav.nav-open {
+    display: flex;
+    transform: translateY(0);
+    opacity: 1;
+  }
 
   nav a {
-    flex-shrink: 0;
-    /* Предотвращаем сжатие ссылок в скролле */
-    border-bottom-width: 0;
-    /* Убираем нижнюю границу для экономии места */
-    padding: 8px 12px;
-    /* Уменьшаем отступы для компактности */
-    font-size: 14px;
-    /* Корректируем размер шрифта */
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 16px;
+    background-color: #43494f;
+    border-radius: 4px;
   }
 
   nav a.active {
-    /* Возвращаем цвет и фон для активного элемента в скролле */
     background-color: #495057;
-    /* Фон для активной ссылки */
     color: #89cff0;
-    /* Цвет текста активной ссылки */
-    border-bottom-width: 0;
   }
 
-  /* Скрываем приветствие на маленьких экранах, оставляем кнопки */
+  .auth-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .auth-section span {
     display: none;
   }
 
-  .auth-section {
-    gap: 8px;
-  }
-
   .login-button,
   .logout-button {
-    padding: 5px 12px;
-    font-size: 12px;
-    /* Корректируем размер шрифта */
+    font-size: 14px;
+    padding: 8px 16px;
+    width: auto;
+  }
+
+  
+  .menu-toggle {
+    display: flex;
   }
 }
 
-/* Очень маленькие экраны */
+
 @media (max-width: 480px) {
   .container {
-    padding: 0 12px;
-    gap: 10px;
-  }
-
-  .logo {
-    font-size: 18px;
-    /* Еще меньше лого */
+    padding: 0 8px;
+    gap: 6px;
   }
 
   .logo-image {
-    height: 32px;
-    /* Еще меньше для мобильных */
-    max-width: 80px;
+    height: 36px;
+    max-width: 140px;
+  }
+
+  .menu-toggle {
+    padding: 6px;
+  }
+
+  .menu-icon {
+    font-size: 22px;
+  }
+
+  nav a {
+    font-size: 15px;
+    padding: 10px 0;
   }
 
   .login-button,
   .logout-button {
-    padding: 4px 10px;
-    font-size: 11px;
-  }
-
-  nav a {
-    padding: 6px 8px;
+    padding: 6px 12px;
     font-size: 13px;
-    /* Корректируем размер шрифта */
   }
 }
 </style>

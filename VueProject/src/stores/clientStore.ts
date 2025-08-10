@@ -26,8 +26,12 @@ export const useClientStore = defineStore('client', () => {
     error.value = apiErrorMessage
   }
 
-  async function fetchClients(searchQuery?: string) {
-    isLoading.value = true
+  async function fetchClients(searchQueryOrOptions?: string | { keepCache?: boolean }) {
+    const keepCache = typeof searchQueryOrOptions === 'object' ? (searchQueryOrOptions.keepCache ?? false) : false
+    const searchQuery = typeof searchQueryOrOptions === 'string' ? searchQueryOrOptions : undefined
+    if (!keepCache) {
+      isLoading.value = true
+    }
     error.value = null
     try {
       const fetchedClients = await clientApi.getClients<Client[] | { results: Client[] }>(

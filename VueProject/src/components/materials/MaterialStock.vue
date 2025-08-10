@@ -1,6 +1,6 @@
 <template>
-  <div class="material-purchase-form-view">
-    <header class="component-header">
+  <div class="material-purchase-form-view" :class="{ 'in-modal': !!props.isModal }">
+    <header class="component-header" v-if="!props.isModal">
       <h2>{{ isEditing ? 'Редактировать закупку' : 'Добавить новую закупку' }}</h2>
     </header>
 
@@ -8,10 +8,10 @@
       <span class="error-icon">⚠️</span>
       <span class="error-text">Ошибка загрузки данных: {{ loadingError }}</span>
       <button @click="clearErrorsAndGoBack()" class="close-error-button" title="Закрыть">×</button>
-      <button type="button" class="button button-secondary" @click="clearErrorsAndGoBack">Вернуться назад</button>
+  <button type="button" class="btn btn-secondary" @click="clearErrorsAndGoBack">Вернуться назад</button>
     </div>
 
-    <form v-else @submit.prevent="handleSubmit" class="material-form card"
+  <form v-else @submit.prevent="handleSubmit" class="material-form"
       :class="{ 'is-editing': isEditing, 'form-attempted-submit': formSubmitted }" novalidate>
       <div class="form-grid">
 
@@ -148,11 +148,9 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="button button-primary">
-          {{ isEditing ? 'Обновить закупку' : 'Добавить закупку' }}
+        <button type="submit" class="btn btn-primary">
+          {{ isEditing ? 'Обновить закупку' : 'Создать закупку' }}
         </button>
-
-        <button type="button" class="button button-secondary" @click="cancelEdit" v-if="isEditing">Отмена</button>
       </div>
     </form>
 
@@ -160,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, defineProps, defineEmits } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useOrderStore } from '@/stores/orderStore';
@@ -218,8 +216,13 @@ const orderStore = useOrderStore();
 const purchaseStore = useMaterialPurchaseStore();
 const router = useRouter();
 const route = useRoute();
+const props = defineProps<{ isModal?: boolean; modalPurchaseId?: number | null }>();
+const emit = defineEmits(['close', 'saved']);
 
 const purchaseId = computed<number | null>(() => {
+  if (props.modalPurchaseId !== undefined) {
+    return props.modalPurchaseId === null ? null : Number(props.modalPurchaseId);
+  }
   const id = route.params.id;
   return id ? Number(id) : null;
 });
@@ -253,9 +256,9 @@ const currentItem = ref<FormItem>(getEmptyItem());
 const isEditing = computed<boolean>(() => purchaseId.value !== null);
 const formSubmitted = ref(false);
 
-// Удалены computed properties initialLoading и isSubmitting
-// const initialLoading = computed<boolean>(() => ... );
-// const isSubmitting = computed<boolean>(() => ... );
+
+
+
 
 
 const loadingError = computed<string | null>(() =>
@@ -287,7 +290,7 @@ onMounted(async () => {
   let purchaseToEdit: MaterialPurchase | null = null;
   if (isEditing.value && purchaseId.value !== null) {
     try {
-      // store's internal isLoading will be true but not used visually
+
       purchaseToEdit = await purchaseStore.fetchMaterialPurchase(purchaseId.value);
     } catch (err) {
       console.error(`Failed to fetch purchase ID ${purchaseId.value} for editing:`, err);
@@ -321,11 +324,11 @@ onMounted(async () => {
 });
 
 const handleMaterialChange = () => {
-  // Логика обработки изменения материала, если нужна
+
 };
 
 const handleStatusChange = () => {
-  // Логика обработки изменения статуса
+
 };
 
 
@@ -357,7 +360,11 @@ const resetForm = () => {
 
 const cancelEdit = () => {
   resetForm();
-  router.push({ name: 'MaterialsView' });
+  if (props.isModal) {
+    emit('close');
+  } else {
+    router.push({ name: 'MaterialsView' });
+  }
 };
 
 
@@ -462,7 +469,7 @@ const handleSubmit = async () => {
 
 
   try {
-    // store's internal isCreating/isUpdating will be true but not used visually
+
     let savedPurchase: MaterialPurchase | null = null;
 
     if (isEditing.value && purchaseId.value !== null) {
@@ -472,7 +479,12 @@ const handleSubmit = async () => {
     }
 
     if (savedPurchase) {
-      router.push({ name: 'MaterialsView' });
+      if (props.isModal) {
+        emit('saved');
+        emit('close');
+      } else {
+        router.push({ name: 'MaterialsView' });
+      }
     } else {
       if (!purchaseStore.error) {
         purchaseStore.setError("Ошибка сохранения закупки.");
@@ -494,63 +506,76 @@ const clearAllErrors = () => {
 
 const clearErrorsAndGoBack = () => {
   clearAllErrors();
-  router.push({ name: 'MaterialsView' });
+  if (props.isModal) {
+    emit('close');
+  } else {
+    router.push({ name: 'MaterialsView' });
+  }
 };
 
 </script>
 
 <style scoped>
-/* === Стили из OrderEditor.vue, адаптированные для MaterialStock.vue === */
 
-/* Общие стили контейнера - Сохранено ваше название класса */
+
+
 .material-purchase-form-view {
   padding: 20px;
   max-width: 800px;
-  /* Немного увеличена максимальная ширина */
+  
   margin: 20px auto;
   font-family: 'Arial', sans-serif;
-  /* Изменен шрифт на более общий */
+  
   color: #333;
   background-color: #ffffff;
-  /* Белый фон */
+  
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  /* Более мягкая тень */
+  
   box-sizing: border-box;
-  /* Убедимся, что padding учитывается в ширине */
+  
+}
+
+.material-purchase-form-view.in-modal {
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  box-shadow: none;
+  border-radius: 0;
+  background-color: transparent; 
 }
 
 h1 {
   color: #007bff;
-  /* Основной синий цвет */
+  
   text-align: center;
   margin-bottom: 25px;
   font-size: 2rem;
   font-weight: 600;
   border-bottom: 1px solid #eee;
-  /* Линия под заголовком */
+  
   padding-bottom: 10px;
 }
 
 h2 {
-  /* Добавляем стиль для h2 */
+  
   font-size: 1.5rem;
   margin-top: 25px;
-  /* Отступ сверху, чтобы отделить секции */
+  
   margin-bottom: 15px;
   color: #007bff;
   border-bottom: 1px solid #e9ecef;
-  /* Линия под заголовком секции */
+  
   padding-bottom: 8px;
 }
 
 
-/* Сообщения состояния (Загрузка, Ошибка) - Классы сохранены */
+
 .status-message {
   padding: 12px;
   border-radius: 5px;
   margin-bottom: 15px;
-  /* Отступ снизу */
+  
   display: flex;
   align-items: center;
   gap: 10px;
@@ -558,80 +583,80 @@ h2 {
   font-weight: 500;
   box-sizing: border-box;
   max-width: 100%;
-  /* Чтобы не вылезали за контейнер */
+  
 }
 
 .loading-message {
   background-color: #e9f7ef;
-  /* Светло-зеленый */
+  
   color: #28a745;
-  /* Зеленый текст */
+  
   border: 1px solid #28a745;
 }
 
 .error-message {
   background-color: #f8d7da;
-  /* Светло-красный фон */
+  
   color: #721c24;
-  /* Темно-красный текст */
+  
   border: 1px solid #f5c6cb;
-  /* Красная рамка */
+  
   flex-direction: column;
-  /* Элементы в столбик */
+  
   align-items: flex-start;
-  /* Выравниваем по левому краю */
+  
   gap: 8px;
 }
 
 .error-message .error-icon {
   font-size: 1.2em;
-  /* Размер иконки */
+  
   flex-shrink: 0;
-  /* Не сжимать иконку */
+  
 }
 
 .error-message .error-text {
   flex-grow: 1;
-  /* Текст занимает место */
+  
 }
 
-/* Стили для кнопки закрытия в сообщении об ошибке */
+
 .error-message .close-error-button {
   background: none;
   border: none;
   font-size: 1.5em;
-  /* Увеличиваем размер кнопки */
+  
   line-height: 1;
   cursor: pointer;
   color: inherit;
-  /* Наследует цвет текста сообщения */
+  
   padding: 0;
   margin-left: auto;
-  /* Прижимает кнопку к правому краю */
+  
   align-self: flex-end;
-  /* Выравнивает кнопку внизу справа в колонке */
+  
 }
 
-/* Добавляем стиль для кнопки "Вернуться назад" в сообщении об ошибке */
+
 .error-message .button {
-  /* Адаптировано для класса .button */
+  
   align-self: center;
-  /* Выравниваем по центру */
+  
   margin-top: 10px;
 }
 
 
-/* Спиннер - Класс сохранен */
+
 .loader {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #007bff;
-  /* Цвет спиннера */
+  
   border-radius: 50%;
   width: 18px;
   height: 18px;
   animation: spin 1s linear infinite;
   flex-shrink: 0;
-  /* Не сжимать спиннер */
+  
 }
 
 @keyframes spin {
@@ -644,37 +669,37 @@ h2 {
   }
 }
 
-/* Стили формы - Класс формы сохранен */
+
 .material-form {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  /* Расстояние между группами полей */
+  
 }
 
-/* Класс для сетки формы - Сохранено ваше название класса */
+
 .form-grid {
   display: flex;
   gap: 20px;
-  /* Расстояние между колонками */
+  
   flex-wrap: wrap;
-  /* Перенос на новую строку на узких экранах */
+  
 }
 
-/* Класс для групп полей - Класс сохранен */
+
 .form-group {
   flex-grow: 1;
-  /* Группа полей может растягиваться */
+  
   display: flex;
   flex-direction: column;
 }
 
-/* Классы для половинной и полной ширины групп - Классы сохранены */
+
 .form-group-half {
   flex-basis: calc(50% - 10px);
-  /* 50% ширины минус половина gap */
+  
   min-width: 150px;
-  /* Минимальная ширина */
+  
 }
 
 .form-group-full-width {
@@ -682,8 +707,8 @@ h2 {
   min-width: auto;
 }
 
-/* Класс для групп одной трети - Удален, т.к. нет в шаблоне */
-/* .form-group-one-third { ... } */
+
+
 
 
 label {
@@ -694,14 +719,14 @@ label {
   font-size: 0.9rem;
 }
 
-/* Стили стандартных контролов формы (input, select, textarea) - Класс сохранен */
+
 .form-control {
   display: block;
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #ced4da;
   border-radius: 4px;
-  /* Более стандартный радиус */
+  
   box-sizing: border-box;
   font-size: 1rem;
   color: #495057;
@@ -709,15 +734,15 @@ label {
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-/* Отдельный стиль для readonly полей - Адаптировано для класса .readonly-field */
+
 .readonly-field.form-control {
-  /* Теперь шаблон добавляет form-control */
+  
   background-color: #e9ecef;
-  /* Светло-серый фон */
+  
   opacity: 1;
-  /* Убираем стандартное уменьшение прозрачности для disabled */
+  
   cursor: default;
-  /* Курсор по умолчанию */
+  
 }
 
 .form-control:focus {
@@ -732,175 +757,98 @@ label {
 }
 
 
-/* Стили для подсветки обязательных полей */
-/* Применяется к div.form-group с классом .required-group (адаптировано) */
+
 .form-group.required-group label::after {
   content: ' *';
   color: #dc3545;
-  /* Красная звездочка */
+  
   margin-left: 4px;
 }
 
-/* Стили для невалидных полей и сообщений */
 
-/* Стиль для самого контрола (input, select, textarea) - Класс сохранен */
 .material-form .form-control.invalid-field {
-  /* Адаптировано для класса .material-form */
   border-color: #dc3545 !important;
-  /* Красная рамка */
-  padding-right: calc(1.5em + 0.75rem);
-  /* Дополнительный отступ для иконки валидации */
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linecap='round' d='M3.5 8.5l5-5M8.5 8.5l-5-5'/%3e%3c/svg%3e");
-  /* Иконка ошибки (крестик) */
-  background-repeat: no-repeat;
-  background-position: right calc(0.375em + 0.1875rem) center;
-  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
 }
 
-/* Сообщение обратной связи (под полем) - Класс сохранен */
+
 .material-form .validation-error {
-  /* Адаптировано с .invalid-feedback на .validation-error */
-  /* display: none; */
-  /* Скрываем по умолчанию, т.к. видимость управляется v-if */
+  
+  
+  
   width: 100%;
   margin-top: 0.25rem;
-  /* Отступ сверху */
+  
   font-size: 0.875em;
-  /* Размер шрифта */
+  
   color: #dc3545;
-  /* Красный цвет текста */
+  
 }
 
-/* v-select кастомные стили для соответствия форме - Адаптировано для класса .material-form */
-/* Требуется глубокий селектор или глобальные стили для изменения внутренней структуры v-select */
-/* Пример (может потребоваться корректировка в зависимости от версии v-select) */
-/*
-  .material-form .v-select-custom.form-control .vs__dropdown-toggle {
-   border: 1px solid #ced4da;
-   border-radius: 4px;
-   padding: 10px 12px;
-   min-height: 38px;
-  }
-  .material-form .v-select-custom.form-control.vs--open .vs__dropdown-toggle {
-   border-color: #007bff;
-   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-  }
-  .material-form .v-select-custom.form-control.invalid-field .vs__dropdown-toggle {
-   border-color: #dc3545 !important;
-   box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-  }
-  */
-/* Сообщение загрузки для select */
+
+
+
+
+
 .select-loading-info.validation-error {
-  /* Адаптировано для класса .validation-error */
+  
   color: #6c757d;
-  /* Цвет текста для статуса загрузки */
+  
   font-size: 0.875em;
   margin-top: 5px;
 }
 
-/* Если есть маленький спиннер внутри select-loading-info */
-/* .select-loading-info .loader-small {
-   display: inline-block;
-   margin-right: 5px;
-   vertical-align: middle;
-  } */
 
 
-/* Секции, отсутствующие в шаблоне - Удалены из стилей */
-/* .order-items-section { ... } */
-/* .order-items-section h2 { ... } */
-/* .order-items-panel { ... } */
-/* .order-items-list { ... } */
-/* .order-item-row { ... } */
-/* .order-item-row span { ... } */
-/* .order-item-row button { ... } */
-/* .order-item-form-panel { ... } */
 
 
-/* Контейнер кнопок формы - Класс сохранен */
-.form-actions {
+
+
+
+
+
+
+
+
+
+
+
+ .form-actions {
   margin-top: 25px;
   padding-top: 15px;
   border-top: 1px solid #e9ecef;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #007bff;
 }
 
-/* Базовые стили кнопок - Адаптировано для класса .button */
-.button {
-  padding: 10px 20px;
-  font-size: 1rem;
+.btn {
+  font-weight: 600;
+  padding: 8px 16px;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
   text-decoration: none;
-  /* Для ссылок */
   display: inline-block;
-  text-align: center;
-  vertical-align: middle;
-  border: 1px solid transparent;
-  /* Добавляем прозрачную рамку */
-  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
-
-/* Цвета кнопок - Адаптировано для классов .button-... */
-.button-primary {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-.button-primary:hover {
-  background-color: #0056b3;
-  border-color: #0056b3;
-}
-
-.button-secondary {
-  background-color: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
-.button-secondary:hover {
-  background-color: #5a6268;
-  border-color: #545b62;
-}
-
-.button-success {
-  background-color: #28a745;
-  color: white;
-  border-color: #28a745;
-}
-
-.button-success:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-.button-danger {
-  background-color: #dc3545;
-  color: white;
-  border-color: #dc3545;
-}
-
-.button-danger:hover {
-  background-color: #c82333;
-  border-color: #bd2130;
-}
-
-/* Состояния disabled для кнопок */
-.button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+.btn:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-primary { background-color: #007bff; color: white; border-color: #007bff; }
+.btn-primary:hover:not(:disabled) { background-color: #0056b3; border-color: #0056b3; }
 
 
-/* --- Адаптивность --- */
+
 @media (max-width: 768px) {
 
-  /* Главный контейнер - Сохранено ваше название класса */
+  
   .material-purchase-form-view {
     padding: 15px;
     margin: 15px auto;
@@ -917,18 +865,18 @@ label {
     margin-bottom: 10px;
   }
 
-  /* Сетка формы - Сохранено ваше название класса */
+  
   .form-grid {
     gap: 15px;
-    /* Уменьшаем gap в рядах */
+    
   }
 
-  /* Группы полей - Классы сохранены */
+  
   .form-group-half,
   .form-group-one-third {
-    /* one-third остался в стилях, но не в шаблоне */
+    
     flex-basis: 100%;
-    /* Элементы в рядах становятся в колонку */
+    
     min-width: auto;
   }
 
@@ -952,47 +900,42 @@ label {
     font-size: 1.3em;
   }
 
-  .error-message .button {
-    /* Адаптировано для класса .button */
+  .error-message .btn {
+    
     padding: 6px 12px;
     font-size: 0.9rem;
   }
 
 
-  /* Контейнер кнопок формы - Класс сохранен */
+  
   .form-actions {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
 
-  /* Кнопки - Адаптировано для класса .button */
-  .form-actions .button {
+  
+  .form-actions .btn {
     width: 100%;
     text-align: center;
     padding: 10px 20px;
     font-size: 1rem;
   }
 
-  .form-actions .button:last-child {
+  .form-actions .btn:last-child {
     margin-bottom: 0;
-    /* Убираем нижний отступ у последней кнопки */
+    
   }
 
 
-  /* Адаптация иконки валидации для меньших полей - Класс формы сохранен */
-  .material-form .form-control.invalid-field {
-    /* Адаптировано для класса .material-form */
-    background-position: right calc(0.1em + 0.1875rem) center;
-    padding-right: calc(1.5em + 0.4rem);
-  }
+  
 
 
 }
 
 @media (max-width: 480px) {
 
-  /* Главный контейнер - Сохранено ваше название класса */
+  
   .material-purchase-form-view {
     padding: 10px;
     margin: 10px auto;
@@ -1009,10 +952,10 @@ label {
     margin-bottom: 8px;
   }
 
-  /* Сетка формы - Сохранено ваше название класса */
+  
   .form-grid {
     gap: 10px;
-    /* Еще уменьшаем gap */
+    
   }
 
   .form-control {
@@ -1041,18 +984,18 @@ label {
   }
 
   .error-message .button {
-    /* Адаптировано для класса .button */
+    
     padding: 5px 10px;
     font-size: 0.8rem;
   }
 
 
-  /* Контейнер кнопок формы - Класс сохранен */
+  
   .form-actions {
     gap: 6px;
   }
 
-  /* Кнопки - Адаптировано для класса .button */
+  
   .form-actions .button {
     padding: 8px 15px;
     font-size: 0.9rem;

@@ -1,4 +1,4 @@
-// src/types/priceList.ts
+
 
 export interface DeliveryType {
   city: number

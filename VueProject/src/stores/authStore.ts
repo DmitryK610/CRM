@@ -1,4 +1,4 @@
-// src/stores/authStore.ts
+
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -7,21 +7,19 @@ import * as authApi from '@/api/auth';
 import type { LoginResponse } from '@/api/auth';
 
 export const useAuthStore = defineStore('auth', () => {
-  // Состояния
+
   const isAuthenticated = ref(false);
   const authToken = ref<string | null>(null);
   const user = ref<User | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  // Геттеры
+
   const getUser = computed(() => user.value);
   const getIsLoading = computed(() => isLoading.value);
   const getError = computed(() => error.value);
 
-  /**
-   * Сбрасывает состояние аутентификации
-   */
+  
   function resetAuthState() {
     isAuthenticated.value = false;
     authToken.value = null;
@@ -30,9 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = false;
   }
 
-  /**
-   * Действие для входа пользователя
-   */
+  
   async function login(username: string, password: string) {
     isLoading.value = true;
     error.value = null;
@@ -62,18 +58,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /**
-   * Действие для выхода пользователя
-   */
+  
   function logout() {
     resetAuthState();
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
   }
 
-  /**
-   * Проверка аутентификации при загрузке
-   */
+  
   function checkAuthOnLoad() {
     const storedToken = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('user');

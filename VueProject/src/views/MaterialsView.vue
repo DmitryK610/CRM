@@ -1,25 +1,24 @@
 <template>
   <div class="material-list-view">
-    <h1>Поиск материалов по каталогу</h1>
-    <div class="controls-panel">
-      <div class="controls-left controls-flex-column">
-        <input type="text" v-model="searchQuery" placeholder="Введите ID, название, артикул или поставщика..."
-          class="search-input" aria-label="Поиск по материалам и поставщикам" />
-        <router-link to="/materials/add" class="button add-button" title="Добавить материал">
-          Добавить материал
-        </router-link>
-      </div>
-
-      <div class="controls-right">
-        <div class="dollar-rate-section">
-          <h4>Курс $:</h4>
-          <input class="dollarRate-input" type="number" v-model="materialStore.dollarRate" placeholder="Курс $" min="0"
-            step="0.01" aria-label="Текущий курс доллара" />
-        </div>
-      </div>
+    <div class="header-actions">
+      <h1>Материалы</h1>
+      <button type="button" class="btn add-button" title="Добавить материал" @click="openCreateMaterialModal">
+        <span class="material-symbols-outlined">add</span>
+      </button>
     </div>
-
-    <hr class="divider">
+   
+    <div class="rate-inline dollar-rate-section">
+      <h4>Курс $:</h4>
+      <input class="dollarRate-input" type="number" v-model="materialStore.dollarRate" placeholder="Курс $" min="0" step="0.01" aria-label="Текущий курс доллара" />
+    </div>
+ <input
+      type="text"
+      v-model="searchQuery"
+      placeholder="Поиск материалов..."
+      class="search-input full-width-search"
+      aria-label="Поиск по материалам и поставщикам"
+    />
+    
 
     <div v-if="materialStore.isLoading" class="status-message loading-message">
       <div class="loader"></div> Загрузка материалов из каталога...
@@ -38,7 +37,7 @@
           <table>
             <thead>
               <tr>
-                <th class="col-id">ID</th>
+                <th class="col-id">№</th>
                 <th class="col-name">Название</th>
                 <th class="col-color-code">Артикул</th>
                 <th class="col-note">Примечание</th>
@@ -57,10 +56,13 @@
                 <td class="col-cost">{{ formatCost(material.cost) }}</td>
                 <td class="col-cost-rub">{{ formatCostRub(material.cost) }}</td>
                 <td class="col-supplier">{{ material.supplier_details?.company_name || '---' }}</td>
-                <td class="col-actions actions-cell">
-                  <router-link :to="`/materials/${material.id}/edit`" class="button edit-button action-button"
-                    title="Редактировать материал">
-                  </router-link>
+                <td class="actions-cell">
+                  <div class="action-links-container">
+                    <button @click="openEditMaterialModal(material.id)" class="btn btn-warning" title="Редактировать материал" aria-label="Редактировать материал">
+                      <span class="material-symbols-outlined">edit</span>
+                      <span class="btn-text">Редактировать</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -74,16 +76,13 @@
 
     <hr class="divider section-divider">
 
-    <h2>Список закупок материалов</h2>
-    <div class="controls-panel purchase-controls-panel">
-      <div class="controls-left controls-flex-column">
-        <input type="text" v-model="purchaseSearchQuery" placeholder="Поиск закупок..." class="search-input"
-          aria-label="Поиск по закупкам" />
-        <router-link :to="{ name: 'AddMaterialPurchaseView' }" class="button add-button" title="Добавить новую закупку">
-          Добавить закупку
-        </router-link>
-      </div>
+    <div class="header-actions">
+      <h1>Закуп</h1>
+      <button type="button" class="btn add-button" title="Добавить закупку" @click="openCreatePurchaseModal">
+        <span class="material-symbols-outlined">add</span>
+      </button>
     </div>
+    <input type="text" v-model="purchaseSearchQuery" placeholder="Поиск закупок..." class="search-input full-width-search" aria-label="Поиск по закупкам" />
 
     <div v-if="isPurchaseListLoading && !procurements.length && !purchaseListError"
       class="status-message loading-message">
@@ -101,7 +100,7 @@
         <table class="purchase-table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>№</th>
               <th>Материал</th>
               <th>Артикул</th>
               <th>Кол-во</th>
@@ -141,12 +140,16 @@
                 ${proc.order}` : '---') }}
               </td>
               <td class="actions-cell">
-                <router-link :to="{ name: 'MaterialPurchaseDetails', params: { id: proc.id } }"
-                  class="action-button details-button" title="Подробно о закупке" :disabled="purchaseStore.isDeleting">
-                </router-link>
-                <router-link :to="{ name: 'EditMaterialPurchaseView', params: { id: proc.id } }"
-                  class="action-button edit-button" title="Редактировать закупку" :disabled="purchaseStore.isDeleting">
-                </router-link>
+                <div class="action-links-container">
+                  <button @click="openPurchaseDetailsModal(proc.id)" class="btn btn-primary" title="Подробно о закупке" :disabled="purchaseStore.isDeleting">
+                    <span class="material-symbols-outlined">visibility</span>
+                    <span class="btn-text">Подробнее</span>
+                  </button>
+                  <button @click="openEditPurchaseModal(proc.id)" class="btn btn-warning" title="Редактировать закупку" :disabled="purchaseStore.isDeleting">
+                    <span class="material-symbols-outlined">edit</span>
+                    <span class="btn-text">Редактировать</span>
+                  </button>
+                </div>
               </td>
 
             </tr>
@@ -155,6 +158,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Material create/edit modal -->
+  <AppModal :is-open="isMaterialFormOpen" @close="closeMaterialFormModal" :title="materialFormId ? 'Редактировать материал' : 'Добавить материал'">
+    <MaterialEditor :isModal="true" :modalMaterialId="materialFormId" @close="closeMaterialFormModal" @saved="onMaterialSaved" />
+  </AppModal>
+
+  <!-- Purchase details modal -->
+  <AppModal :is-open="isPurchaseDetailsOpen" @close="closePurchaseDetailsModal" title="Детали закупки">
+    <MaterialPurchaseDetails :isModal="true" :modalPurchaseId="purchaseDetailsId" @close="closePurchaseDetailsModal" />
+  </AppModal>
+
+  <!-- Purchase create/edit modal -->
+  <AppModal :is-open="isPurchaseFormOpen" @close="closePurchaseFormModal" :title="purchaseFormId ? 'Редактировать закупку' : 'Добавить закупку'">
+    <MaterialStock :isModal="true" :modalPurchaseId="purchaseFormId" @close="closePurchaseFormModal" @saved="onPurchaseSaved" />
+  </AppModal>
 </template>
 
 <script setup lang="ts">
@@ -162,6 +180,10 @@ import { ref, computed, onMounted } from 'vue';
 import { useMaterialStore } from '@/stores/materialStore';
 import { useMaterialPurchaseStore } from '@/stores/materialPurchaseStore';
 import { useOrderStore } from '@/stores/orderStore';
+import AppModal from '@/components/ui/AppModal.vue';
+import MaterialEditor from '@/components/materials/MaterialEditor.vue';
+import MaterialPurchaseDetails from '@/components/materials/MaterialPurchaseDetails.vue';
+import MaterialStock from '@/components/materials/MaterialStock.vue';
 
 const materialStore = useMaterialStore();
 const purchaseStore = useMaterialPurchaseStore();
@@ -187,6 +209,29 @@ const purchaseSearchQuery = ref('');
 const procurements = computed(() => purchaseStore.procurements || []);
 const isPurchaseListLoading = computed(() => purchaseStore.isLoading);
 const purchaseListError = computed(() => purchaseStore.error);
+
+const isMaterialFormOpen = ref(false);
+const materialFormId = ref<number | null>(null);
+const isPurchaseDetailsOpen = ref(false);
+const purchaseDetailsId = ref<number | null>(null);
+const isPurchaseFormOpen = ref(false);
+const purchaseFormId = ref<number | null>(null);
+
+const openCreateMaterialModal = () => { materialFormId.value = null; isMaterialFormOpen.value = true; };
+const openEditMaterialModal = (id: number) => { materialFormId.value = id; isMaterialFormOpen.value = true; };
+const closeMaterialFormModal = () => { isMaterialFormOpen.value = false; };
+const onMaterialSaved = async () => { isMaterialFormOpen.value = false; await materialStore.fetchMaterials({ keepCache: false }); };
+
+const openPurchaseDetailsModal = (id: number) => { purchaseDetailsId.value = id; isPurchaseDetailsOpen.value = true; };
+const closePurchaseDetailsModal = () => { isPurchaseDetailsOpen.value = false; purchaseDetailsId.value = null; };
+
+const openCreatePurchaseModal = () => { purchaseFormId.value = null; isPurchaseFormOpen.value = true; };
+const openEditPurchaseModal = (id: number) => { purchaseFormId.value = id; isPurchaseFormOpen.value = true; };
+const closePurchaseFormModal = () => { isPurchaseFormOpen.value = false; };
+const onPurchaseSaved = async () => {
+  isPurchaseFormOpen.value = false;
+  await purchaseStore.fetchMaterialPurchases();
+};
 
 const filteredPurchases = computed(() => {
   const query = purchaseSearchQuery.value.toLowerCase().trim();
@@ -298,7 +343,7 @@ const refreshPurchaseList = async () => {
 onMounted(async () => {
   try {
     await Promise.allSettled([
-      materialStore.fetchMaterials(),
+    materialStore.fetchMaterials({ keepCache: true }),
       purchaseStore.fetchMaterialPurchases(),
       orderStore.fetchOrders()
     ]);
@@ -311,36 +356,34 @@ defineExpose({ refreshPurchaseList });
 
 <style scoped>
 .material-list-view {
-  padding: 24px;
-  max-width: 1400px;
+ padding: 20px 24px;
+  max-width: var(--max-container-width);
   margin: 20px auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
-  box-sizing: border-box;
-  background-color: white;
+  background-color: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
-  color: #007bff;
-  text-align: center;
-  margin-bottom: 25px;
-  font-size: 2rem;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 12px;
 }
 
-h2 {
-  color: #007bff;
-  text-align: center;
-  margin-top: 25px;
-  margin-bottom: 25px;
+
+.header-actions h1 {
+  margin: 0;
   font-size: 1.8rem;
   font-weight: 600;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+  color: #007bff;
+  flex-grow: 1;
+  text-align: left;
 }
 
 .controls-panel {
@@ -389,7 +432,8 @@ h2 {
 
 .dollar-rate-section {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+
   gap: 8px;
 }
 
@@ -404,7 +448,8 @@ h2 {
   padding: 8px 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: 100px;
+  width: 80px;
+  height:40px;
   text-align: center;
   font-size: 14px;
   box-sizing: border-box;
@@ -439,6 +484,15 @@ h2 {
   border: 1px solid #ffeeba;
 }
 
+
+.action-links-container { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 7px 13px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; min-height: 30px; gap: 8px; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background-color: #1976d2; color: white; }
+.btn-warning { background-color: #ffc107; color: #333; }
+
+.header-actions .add-button { margin-left: 16px; }
+
 .error-message {
   background-color: #ffebee;
   color: #d32f2f;
@@ -469,9 +523,7 @@ h2 {
   line-height: 1;
 }
 
-.error-message .close-error-button:hover {
-  color: #b71c1c;
-}
+
 
 .table-info-cell {
   padding: 16px;
@@ -564,7 +616,7 @@ th {
 
 .table-container:not(.material-purchase-table-container) th.col-id,
 .table-container:not(.material-purchase-table-container) td.col-id {
-  text-align: center;
+  text-align: left;
   width: 60px;
   min-width: 60px;
 }
@@ -590,13 +642,13 @@ th {
 .table-container:not(.material-purchase-table-container) th.col-cost,
 .table-container:not(.material-purchase-table-container) td.col-cost {
   min-width: 80px;
-  text-align: right;
+  text-align: left;
 }
 
 .table-container:not(.material-purchase-table-container) th.col-cost-rub,
 .table-container:not(.material-purchase-table-container) td.col-cost-rub {
   min-width: 100px;
-  text-align: right;
+  text-align: left;
 }
 
 .table-container:not(.material-purchase-table-container) th.col-supplier,
@@ -616,7 +668,7 @@ th {
 
 .purchase-table th:nth-child(1),
 .purchase-table td:nth-child(1) {
-  text-align: center;
+  text-align: left;
   width: 30px;
   min-width: 20px;
 }
@@ -633,13 +685,13 @@ th {
 
 .purchase-table th:nth-child(4),
 .purchase-table td.number-cell {
-  text-align: right;
+  text-align: left;
   min-width: 50px;
 }
 
 .purchase-table th:nth-child(5),
 .purchase-table td.currency-cell {
-  text-align: right;
+  text-align: left;
   min-width: 70px;
 }
 
@@ -773,18 +825,7 @@ th {
   cursor: not-allowed;
 }
 
-.add-button {
-  background-color: #4CAF50;
-  color: white;
-  padding: 8px 16px;
-  font-size: 14px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
-.add-button:hover {
-  background-color: #45a049;
-}
 
 .status-badge {
   display: inline-block;
@@ -840,10 +881,7 @@ th {
     gap: 10px;
   }
 
-  .add-button {
-    padding: 8px 16px;
-    font-size: 0.9rem;
-  }
+  
 
   .table-wrapper {
     min-width: 900px;

@@ -1,6 +1,5 @@
 <template>
   <div class="dashboard-container">
-    <h1>Заказы в производстве</h1>
     <div class="dashboard-content">
       <div v-if="authStore.isAuthenticated">
         <div v-if="orderStore.error" class="status-message error-message">
@@ -29,7 +28,12 @@
               <tbody>
                 <tr v-if="activeOrders.length === 0">
                   <td colspan="7" style="text-align: center;">
-                    Нет заказов в производстве.
+                    <template v-if="orderStore.isLoading">
+                      <span class="loader-small"></span> Загрузка заказов...
+                    </template>
+                    <template v-else>
+                      Нет заказов в производстве.
+                    </template>
                   </td>
                 </tr>
                 <tr v-for="order in activeOrders" :key="order.id">
@@ -39,21 +43,33 @@
                   <td class="deadline-cell">{{ formatDate(order.installation_date) }}</td>
                   <td>{{ order.total_amount ?? '---' }}</td>
                   <td>
-                    <span class="status-badge" :class="statusClass(order.status)">
-                      {{ order.status || 'Статус не указан' }}
-                    </span>
+                    <StatusBadge :status="order.status as any" :label="order.status || 'Статус не указан'" />
                   </td>
                   <td class="actions-cell">
-                    <router-link :to="`/orders/${order.id}`" class="btn btn-primary btn-sm btn-icon details-button"
-                      title="Подробнее"></router-link>
-                    <button v-if="order.status === OrderStatus.IN_PRODUCTION" @click="completeOrder(order.id!)"
-                      class="btn btn-success btn-sm btn-icon complete-button" :disabled="orderStore.isLoading"
-                      title="Завершить"></button>
+                    <div class="action-links-container">
+                      <button @click="openDetailsModal(order.id!)" class="btn btn-primary" title="Подробнее">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span class="btn-text">Подробнее</span>
+                      </button>
+                      <button v-if="order.status === OrderStatus.IN_PRODUCTION" @click="completeOrder(order.id!)"
+                        class="btn btn-success" :disabled="orderStore.isLoading" title="Завершить">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <span class="btn-text">Завершить</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <!-- Modals -->
+          <AppModal :is-open="isDetailsModalOpen" title="Детали заказа" @close="closeDetailsModal" :maxWidth="1100">
+            <OrderDetailView :isModal="true" :modalOrderId="selectedOrderIdForDetails" @close="closeDetailsModal" @edit="handleEditFromDetails" />
+          </AppModal>
+
+          <AppModal :is-open="isEditModalOpen" title="Редактировать заказ" @close="closeEditModal" :maxWidth="1100">
+            <OrderEditor :isModal="true" :modalOrderId="selectedOrderIdForEdit" @close="closeEditModal" @saved="closeEditModal" />
+          </AppModal>
         </div>
       </div>
       <div v-else class="auth-message">
@@ -65,11 +81,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, nextTick } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { useOrderStore } from '@/stores/orderStore';
 import type { Client } from '@/types/client';
 import { OrderStatus } from '@/types/order';
+import StatusBadge from '@/components/ui/StatusBadge.vue';
+import AppModal from '@/components/ui/AppModal.vue';
+import OrderDetailView from '@/components/orders/OrderDetailView.vue';
+import OrderEditor from '@/components/orders/OrderEditor.vue';
 
 const authStore = useAuthStore();
 const orderStore = useOrderStore();
@@ -78,7 +98,7 @@ const activeOrders = computed(() => {
   const orders = orderStore.getOrders;
   if (!Array.isArray(orders)) return [];
   return orders
-    .filter(order => order.status === OrderStatus.IN_PRODUCTION)
+    .filter(order => order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED)
     .sort((a, b) => {
       const dateA = a.installation_date;
       const dateB = b.installation_date;
@@ -105,21 +125,7 @@ const formatDate = (dateString: string | null | undefined): string => {
   }
 };
 
-const statusClass = (status: OrderStatus | null): string => {
-  if (status === null) return 'status-unknown';
-  const statusClasses: Record<OrderStatus, string> = {
-    [OrderStatus.NEW]: 'status-new',
-    [OrderStatus.CALCULATION_CONFIRMED]: 'status-confirmed',
-    [OrderStatus.AWAITING_ADVANCE]: 'status-pending',
-    [OrderStatus.IN_PRODUCTION]: 'status-in-progress',
-    [OrderStatus.READY_FOR_INSTALLATION]: 'status-ready',
-    [OrderStatus.AWAITING_INSTALLATION]: 'status-waiting',
-    [OrderStatus.INSTALLATION]: 'status-installation',
-    [OrderStatus.COMPLETED]: 'status-completed',
-    [OrderStatus.CANCELLED]: 'status-cancelled'
-  };
-  return statusClasses[status] || 'status-unknown';
-};
+
 
 const getClient = (clientId: number | null | undefined): Client | undefined => {
   if (clientId === null || clientId === undefined) return undefined;
@@ -135,10 +141,18 @@ const getClientName = (clientId: number | null | undefined): string => {
 
 const reloadData = async () => {
   orderStore.clearError();
-  await Promise.all([
-    orderStore.fetchOrders(),
-    orderStore.fetchClients()
-  ]).catch(err => {
+  const hasOrdersCache = Array.isArray(orderStore.getOrders) && orderStore.getOrders.length > 0;
+  const hasClientsCache = Array.isArray(orderStore.getClients) && orderStore.getClients.length > 0;
+
+  const ordersPromise = hasOrdersCache
+    ? orderStore.fetchOrders({ keepCache: true })
+    : orderStore.fetchOrders({ keepCache: false });
+
+  const clientsPromise = hasClientsCache
+    ? orderStore.fetchClients({ keepCache: true })
+    : orderStore.fetchClients({ keepCache: false });
+
+  await Promise.all([ordersPromise, clientsPromise]).catch(err => {
     console.error("reloadData failed:", err);
   });
 };
@@ -148,7 +162,7 @@ const completeOrder = async (orderId: number) => {
   try {
     const updatedOrder = await orderStore.updateOrder(orderId, { status: OrderStatus.COMPLETED });
     if (updatedOrder) {
-      // Успешно завершено
+
     }
   } catch (error) {
     console.error(`Ошибка при завершении заказа с ID ${orderId}:`, error);
@@ -160,6 +174,27 @@ onMounted(async () => {
     await reloadData();
   }
 });
+
+
+const isDetailsModalOpen = ref(false);
+const selectedOrderIdForDetails = ref<number | null>(null);
+const isEditModalOpen = ref(false);
+const selectedOrderIdForEdit = ref<number | null>(null);
+
+const openDetailsModal = async (id: number) => {
+  try { await orderStore.fetchOrderById(id); } catch {}
+  selectedOrderIdForDetails.value = id;
+  isDetailsModalOpen.value = true;
+};
+const closeDetailsModal = () => { isDetailsModalOpen.value = false; selectedOrderIdForDetails.value = null; };
+
+const openEditModal = (id: number) => { selectedOrderIdForEdit.value = id; isEditModalOpen.value = true; };
+const closeEditModal = () => { isEditModalOpen.value = false; selectedOrderIdForEdit.value = null; };
+const handleEditFromDetails = async (id: number) => {
+  closeDetailsModal();
+  await nextTick();
+  openEditModal(id);
+};
 </script>
 
 <style scoped>
@@ -173,7 +208,6 @@ onMounted(async () => {
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
-
 
 h1 {
   color: #007bff;
@@ -222,25 +256,27 @@ h1 {
   gap: 12px;
 }
 
+.loader-small {
+  display: inline-block;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #007bff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .stats {
   font-size: 1rem;
   color: #555;
   font-weight: 500;
-}
-
-.filters {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filters label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-  cursor: pointer;
 }
 
 .table-container {
@@ -272,10 +308,37 @@ td {
   vertical-align: middle;
   word-break: break-word;
   white-space: normal;
+  min-height: 30px;
 }
 
 th {
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  position: relative;
   border-top: none;
+}
+
+th:hover {
+  background-color: #ebebeb;
+}
+
+th.sorted-asc::after {
+  content: ' ▲';
+  font-size: 0.8em;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+th.sorted-desc::after {
+  content: ' ▼';
+  font-size: 0.8em;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 tr td:first-child,
@@ -302,7 +365,7 @@ tbody tr:hover {
 
 th.col-id,
 td:nth-child(1) {
-  text-align: center;
+  text-align: left;
   width: 80px;
   min-width: 80px;
 }
@@ -338,91 +401,44 @@ td.actions-cell {
   width: auto;
   min-width: 200px;
   text-align: center;
-  vertical-align: middle;
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  flex-shrink: 0;
-  min-width: 60px;
-  text-align: center;
+
+td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-info, .btn-warning, .btn-danger) {
+  display: inline-flex;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.status-new {
-  background-color: #bbdefb;
-  color: #0d47a1;
+td.actions-cell {
+  padding: 10px 12px;
+  border-left: none;
+  border-right: none;
 }
 
-.status-confirmed {
-  background-color: #c8e6c9;
-  color: #1b5e20;
-}
-
-.status-pending {
-  background-color: #fff9c4;
-  color: #f57f17;
-}
-
-.status-in-progress {
-  background-color: #d1c4e9;
-  color: #4a148c;
-}
-
-.status-ready {
-  background-color: #b3e5fc;
-  color: #01579b;
-}
-
-.status-waiting {
-  background-color: #ffccbc;
-  color: #bf360c;
-}
-
-.status-installation {
-  background-color: #f8bbd0;
-  color: #880e4f;
-}
-
-.status-completed {
-  background-color: #a5d6a7;
-  color: #1b5e20;
-}
-
-.status-cancelled {
-  background-color: #cfd8dc;
-  color: #37474f;
-}
-
-.status-unknown {
-  background-color: #e0e0e0;
-  color: #666;
-}
-
-.actions-cell {
+.action-links-container {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 8px;
   flex-wrap: wrap;
-  text-align: center;
 }
+
+
 
 .btn {
-  padding: 10px 20px;
+  padding: 6px 12px;
   border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  gap: 8px;
 }
 
 .btn:hover:not(:disabled) {
@@ -447,58 +463,13 @@ td.actions-cell {
   border-color: #dc3545;
 }
 
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
 .btn-sm {
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
 }
 
-.btn-icon::before {
-  content: '?';
-  font-size: 16px;
-  font-family: 'Arial', sans-serif;
-  line-height: 1;
-  display: inline-block;
-  vertical-align: middle;
-  color: inherit;
-}
-
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  font-size: 0;
-  line-height: 32px;
-  text-align: center;
-  overflow: hidden;
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  margin: 0;
-  min-width: auto;
-  border-radius: 4px;
-}
-
-.details-button.btn-icon::before {
-  content: '\2139';
-  color: white;
-}
-
-.complete-button.btn-icon::before {
-  content: '\2714';
-}
-
-.btn:disabled,
-.btn-icon:disabled {
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -523,5 +494,38 @@ td.actions-cell {
   margin-top: 16px;
   padding: 10px 20px;
   font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 0 12px;
+  }
+
+  .table-container {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .action-links-container {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .actions-cell .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 0;
+    min-height: auto;
+  }
+
+  .actions-cell .btn .material-symbols-outlined {
+    font-size: 20px;
+  }
+
+  .actions-cell .btn .btn-text {
+    display: none;
+  }
 }
 </style>

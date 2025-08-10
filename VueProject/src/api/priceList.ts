@@ -1,6 +1,6 @@
 import type { PriceListFormData } from '@/types'
 
-// Значения по умолчанию для прайс-листа (соответствуют Django модели)
+
 const defaultPriceList: PriceListFormData = {
   measurement: 1.0,
   deliveryType: {
@@ -36,11 +36,11 @@ const defaultPriceList: PriceListFormData = {
   lastSaved: new Date().toISOString(),
 }
 
-// Локальное хранение вместо API
+
 const STORAGE_KEY = 'priceList'
 
 export const priceListApi = {
-  // Получить текущий прайс-лист из localStorage
+
   get: async (): Promise<PriceListFormData> => {
     return new Promise((resolve) => {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -56,7 +56,7 @@ export const priceListApi = {
     })
   },
 
-  // Обновить прайс-лист в localStorage
+
   update: async (priceList: PriceListFormData): Promise<PriceListFormData> => {
     return new Promise((resolve) => {
       const updatedPriceList = {
@@ -68,7 +68,7 @@ export const priceListApi = {
     })
   },
 
-  // Сброс к значениям по умолчанию
+
   reset: async (): Promise<PriceListFormData> => {
     return new Promise((resolve) => {
       const resetPriceList = {
