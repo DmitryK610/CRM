@@ -98,6 +98,18 @@ class CustomObtainAuthToken(ObtainAuthToken):
     """
 
     def post(self, request, *args, **kwargs):
+        # --- НАЧАЛО ДИАГНОСТИЧЕСКОГО ЛОГА ---
+        print("="*50)
+        print(">>> DIAGNOSTIC LOG: CustomObtainAuthToken received a request <<<")
+        print(f"    request.path: {request.path}")
+        print(f"    request.path_info: {request.path_info}")
+        print(f"    request.META['PATH_INFO']: {request.META.get('PATH_INFO')}")
+        print(f"    request.META['SCRIPT_NAME']: {request.META.get('SCRIPT_NAME')}")
+        print(f"    request.META['HTTP_X_FORWARDED_FOR']: {request.META.get('HTTP_X_FORWARDED_FOR')}")
+        print(f"    request.META['HTTP_HOST']: {request.META.get('HTTP_HOST')}")
+        print("="*50)
+        # --- КОНЕЦ ДИАГНОСТИЧЕСКОГО ЛОГА ---
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)  # Если валидация не пройдена, будет выброшено исключение
 
