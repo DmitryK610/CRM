@@ -15,7 +15,8 @@ from .views import (
     PriceListViewSet,
 )
 
-router = routers.SimpleRouter()
+# Меняем SimpleRouter на DefaultRouter (даёт корневой /api/ список)
+router = routers.DefaultRouter()
 router.register(r'suppliers', SupplierViewSet, basename='supplier')
 router.register(r'materials', MaterialViewSet, basename='material')
 router.register(r'clients', ClientViewSet, basename='client')
