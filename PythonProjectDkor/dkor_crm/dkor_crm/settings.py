@@ -56,7 +56,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'crm.middleware.RequestPathLoggingMiddleware',  # <-- НАШ ДИАГНОСТИЧЕСКИЙ MIDDLEWARE
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware', # Важно: должен быть перед CommonMiddleware
     'django.middleware.common.CommonMiddleware',
