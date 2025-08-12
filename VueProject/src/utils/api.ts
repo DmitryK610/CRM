@@ -7,13 +7,29 @@ const getAuthToken = (): string | null => {
 }
 
 function buildUrl(endpoint: string): string {
-  // убираем начальные слеши
-  let ep = endpoint.replace(/^\/+/, '')
-  // если база заканчивается на /api и endpoint начинается с api/ -> вырезаем повтор
+  // Убираем начальные слеши у endpoint
+  let ep = endpoint.replace(/^\/+/,'')
+  // Если база заканчивается на /api и endpoint начинается с api/ -> обрезаем дублирование
   if (API_BASE_URL.endsWith('/api') && ep.startsWith('api/')) {
-    ep = ep.substring(4)
+    ep = ep.slice(4)
   }
-  return `${API_BASE_URL}/${ep}`
+  // Склеиваем
+  let url = `${API_BASE_URL}/${ep}`
+  // Нормализуем // (кроме протокола) и удаляем возможное повторное /api/api/
+  const protocolMatch = url.match(/^https?:\/\//)
+  const protocol = protocolMatch ? protocolMatch[0] : ''
+  let rest = protocol ? url.slice(protocol.length) : url
+  // Сжимаем множественные слеши
+  rest = rest.replace(/\/+/g,'/')
+  // Убираем двойной сегмент /api/api/
+  const before = rest
+  rest = rest.replace(/\/api\/api\//g,'/api/')
+  if (before !== rest) {
+    // eslint-disable-next-line no-console
+    console.warn('[api] Исправлен дублированный путь:', before, '->', rest)
+  }
+  url = protocol + rest
+  return url
 }
 
 async function handleApiResponse<T>(response: Response): Promise<T | null> {

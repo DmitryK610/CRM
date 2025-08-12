@@ -3,7 +3,7 @@
 import { api } from '@/utils/api'
 import type { Material } from '@/types/material'
 
-const MATERIALS_ENDPOINT = '/api/materials/'
+const MATERIALS_ENDPOINT = 'materials/'
 
 export interface MaterialCreatePayload {
   material_name: string

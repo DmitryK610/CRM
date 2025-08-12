@@ -6,7 +6,7 @@ import { api } from '@/utils/api'; // Предполагаем, что api - э�
 import type { Order, OrderStatus } from '@/types/order'; // Импортируем типы Order и OrderStatus
 
 
-const ORDERS_ENDPOINT = '/api/orders/'; // Замените на фактический эндпоинт вашего API для заказов
+const ORDERS_ENDPOINT = 'orders/';
 
 
 

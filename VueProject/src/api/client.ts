@@ -2,7 +2,7 @@
 import { api } from '@/utils/api';
 
 
-const CLIENTS_ENDPOINT = '/api/clients/';
+const CLIENTS_ENDPOINT = 'clients/';
 
 
 export async function getClients<T>(searchQuery?: string): Promise<T> {

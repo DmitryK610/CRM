@@ -3,7 +3,7 @@
 import { api } from '@/utils/api';
 import type { Employee } from '@/types/employee';
 
-const EMPLOYEES_ENDPOINT = '/api/employees/'; // Замените на фактический эндпоинт вашего API
+const EMPLOYEES_ENDPOINT = 'employees/';
 
 
 export async function getEmployees<T>(): Promise<T> {

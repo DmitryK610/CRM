@@ -4,7 +4,7 @@
 import { api } from '@/utils/api';
 import type { FinancialData } from '@/types/financial';
 
-const FINANCIAL_ENDPOINT = '/api/financial-data/'; // Замените на фактический эндпоинт вашего API
+const FINANCIAL_ENDPOINT = 'financial-data/';
 
 
 export async function getFinancialData(params?: Record<string, unknown>): Promise<FinancialData> {

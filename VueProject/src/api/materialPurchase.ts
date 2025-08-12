@@ -11,7 +11,7 @@ interface PaginatedResponse<T> {
     results: T[];
 }
 
-const MATERIAL_PURCHASES_ENDPOINT = '/api/material-purchases/';
+const MATERIAL_PURCHASES_ENDPOINT = 'material-purchases/';
 
 
 

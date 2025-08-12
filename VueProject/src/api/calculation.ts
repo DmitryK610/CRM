@@ -4,7 +4,7 @@ import { api } from '@/utils/api'
 import type { CalculationForm, CalculationResult, CalculationHistory } from '@/types/calculation'
 import type { PriceListFormData } from '@/types/priceList'
 
-const CALCULATION_ENDPOINT = '/api/calculations/'
+const CALCULATION_ENDPOINT = 'calculations/'
 
 
 interface DjangoPagedResponse<T> {

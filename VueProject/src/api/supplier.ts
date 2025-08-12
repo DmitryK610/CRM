@@ -3,7 +3,7 @@
 import { api } from '@/utils/api';
 import type { Supplier } from '@/types/supplier';
 
-const SUPPLIERS_ENDPOINT = '/api/suppliers/'; // Замените на фактический эндпоинт вашего API
+const SUPPLIERS_ENDPOINT = 'suppliers/';
 
 
 export async function getSuppliers<T>(): Promise<T> {

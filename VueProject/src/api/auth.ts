@@ -13,7 +13,8 @@ interface AuthLoginResponse {
 
 export async function login(credentials: LoginRequest): Promise<AuthLoginResponse> {
   try {
-    const response = await api.post<LoginRequest, LoginResponse>('/api/login/', credentials)
+  // Используем относительный путь чтобы избежать потенциального дублирования /api
+  const response = await api.post<LoginRequest, LoginResponse>('login/', credentials)
     if (!response) {
       throw new Error('Login response is null')
     }
