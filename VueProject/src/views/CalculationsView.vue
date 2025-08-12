@@ -832,7 +832,7 @@ td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-i
   margin-right: auto;
 }
 
-.action-links-container { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.action-links-container { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
 .actions-cell .btn { font-size: 12px; font-weight: 500; padding: 7px 13px; line-height: 1; letter-spacing: normal; text-transform: none; }
 .actions-cell .btn .material-symbols-outlined {
   font-size: 24px;
@@ -1363,10 +1363,11 @@ td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-i
   .action-links-container {
     flex-direction: row;
     flex-wrap: nowrap;
-    gap: 6px;
+    gap: 4px; /* unified tighter gap */
+    justify-content: flex-start; /* align left like other views */
   }
 
-  .actions-cell .btn { width: 32px; height: 32px; padding: 0; font-size: 0; min-height: auto; border-radius: 4px; }
+  .actions-cell .btn { width: 32px; height: 32px; padding: 0; font-size: 0; min-height: 32px; border-radius: 4px; }
   .actions-cell .btn .material-symbols-outlined { font-size: 20px; }
   .actions-cell .btn .btn-text { display: none; }
 

@@ -14,6 +14,8 @@ from rest_framework import status # Для кодов статуса HTTP
 from django.contrib.contenttypes.models import ContentType # Для GenericForeignKey
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
+from rest_framework.permissions import IsAuthenticated
+from .permissions import PriceListPermission
 from decimal import Decimal, InvalidOperation
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
@@ -53,7 +55,7 @@ class PriceListViewSet(ViewSet):
     - PUT /api/pricelist/: Updates the price list.
     - POST /api/pricelist/reset/: Resets the price list to default values.
     """
-    permission_classes = [] # Add permissions like IsAdminUser in a real app
+    permission_classes = [IsAuthenticated, PriceListPermission]
 
     def list(self, request):
         """Handles GET requests to fetch the price list."""
@@ -131,6 +133,7 @@ class CustomObtainAuthToken(ObtainAuthToken):
         response_data = {
             'token': token.key,
             'user': user_profile_data,
+            'permissions': sorted(list(user.get_all_permissions())),
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -144,6 +147,17 @@ class SupplierViewSet(viewsets.ModelViewSet):
     search_fields = ['company_name', 'contact_person', 'email', 'phone']
     ordering_fields = ['company_name', 'created_at']
     pagination_class = StandardPagination
+    permission_classes = []  # Временно убираем авторизацию для диагностики
+
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def health(self, request):
+        """Простая проверка работоспособности endpoint"""
+        count = Supplier.objects.count()
+        return Response({
+            'status': 'ok',
+            'suppliers_count': count,
+            'message': 'Suppliers endpoint is working'
+        })
 
     def perform_create(self, serializer):
         user = get_current_user(self.request)

@@ -585,7 +585,7 @@ tbody tr:last-child {
 .action-links-container {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 4px; /* reduced spacing */
   flex-wrap: wrap;
 }
 
@@ -681,7 +681,7 @@ td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-i
 
 @media (max-width: 768px) {
   .order-list-container {
-    padding: 0 12px;
+    padding: 0 15px; /* unified padding */
   }
 
   .header-actions h1 {
@@ -719,16 +719,17 @@ td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-i
 
   .action-links-container {
     flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 6px;
+    flex-wrap: nowrap; /* single row */
+    gap: 4px; /* tighter */
+    justify-content: flex-start;
   }
 
   .actions-cell .btn {
     width: 32px;
     height: 32px;
     padding: 0;
-    font-size: 0;
-    min-height: auto;
+    font-size: 0; /* hide text */
+    min-height: 32px;
     border-radius: 4px;
   }
 

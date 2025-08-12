@@ -29,7 +29,10 @@
               </div>
             </template>
             <template #selected-option="{ option }">
-              <span v-if="option"><strong>{{ (option as Material).material_name }} ({{ (option as Material).color_code }})</strong></span>
+              <!-- При использовании reduce vue-select передает в слот либо объект (до выбора), либо reduced значение (id) -->
+              <span v-if="option !== undefined && option !== null">
+                <strong>{{ formatSelectedMaterial(option) }}</strong>
+              </span>
               <span v-else>-- Выберите --</span>
             </template>
             <template #no-options="{ search, loading }">
@@ -277,6 +280,21 @@ const selectedMaterial = computed<Material | undefined>(() => {
   if (!currentItem.value.material) return undefined;
   return materialStore.materials.find(m => m.id === currentItem.value.material);
 });
+
+// Возвращает строку для отображения выбранного материала в v-select selected-option
+const formatSelectedMaterial = (option: unknown): string => {
+  // Если пришел целый объект материала
+  if (option && typeof option === 'object' && 'material_name' in option) {
+    const mat = option as Material;
+    return `${mat.material_name} (${mat.color_code || '—'})`;
+  }
+  // Если reduce вернул id (number)
+  if (typeof option === 'number') {
+    const mat = materialStore.materials.find(m => m.id === option);
+    if (mat) return `${mat.material_name} (${mat.color_code || '—'})`;
+  }
+  return '—';
+};
 
 
 onMounted(async () => {

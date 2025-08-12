@@ -509,16 +509,11 @@ td.actions-cell {
   .action-links-container {
     flex-direction: row;
     flex-wrap: nowrap;
-    gap: 6px;
+    gap: 4px; /* unified tighter gap */
+    justify-content: flex-start; /* align left for consistency */
   }
 
-  .actions-cell .btn {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    font-size: 0;
-    min-height: auto;
-  }
+  .actions-cell .btn { width: 32px; height: 32px; padding: 0; font-size: 0; min-height: 32px; border-radius: 4px; }
 
   .actions-cell .btn .material-symbols-outlined {
     font-size: 20px;

@@ -485,7 +485,7 @@ defineExpose({ refreshPurchaseList });
 }
 
 
-.action-links-container { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.action-links-container { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
 .btn { padding: 7px 13px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; min-height: 30px; gap: 8px; }
 .btn:hover { opacity: 0.85; }
 .btn-primary { background-color: #1976d2; color: white; }
@@ -1034,6 +1034,10 @@ th {
   .material-list-view {
     padding: 10px;
   }
+  .action-links-container { flex-wrap: nowrap; gap: 4px; justify-content: flex-start; }
+  .actions-cell .btn { width: 30px; height: 30px; padding: 0; font-size: 0; min-height: 30px; }
+  .actions-cell .btn .btn-text { display: none; }
+  .actions-cell .btn .material-symbols-outlined { font-size: 20px; line-height: 1; }
 
   h1 {
     font-size: 1.6rem;

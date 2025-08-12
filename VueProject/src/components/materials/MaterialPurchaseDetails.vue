@@ -214,7 +214,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   border-radius: 8px;
   padding: 20px;
   margin: 20px auto;
-  max-width: 960px;
+  max-width: 800px; /* align with OrderDetailView */
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -248,7 +248,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   padding: 15px;
   border: 1px solid #eee;
   border-radius: 6px;
-  background-color: #f9f9f9;
+  background-color: #fff; /* unify with order details style */
 }
 
 
@@ -262,38 +262,43 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
 }
 
 
+/* Unified detail layout to mirror OrderDetailView */
 .details-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px 24px;
   margin-bottom: 20px;
 }
 
-
 .detail-item {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  align-items: baseline;
   line-height: 1.5;
   font-size: 1rem;
-  width: 100%;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+  margin-bottom: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
 
 .detail-label {
   font-weight: bold;
-  width: 390px; 
+  width: 350px; /* match order detail label width */
   flex-shrink: 0;
-  margin-right: 15px;
+  margin-right: 10px;
   text-align: left;
 }
 
-
 .detail-value {
   flex-grow: 1;
+  min-width: 0;
+  text-align: center; /* mirror order detail center alignment */
   word-break: break-word;
 }
 
 
+/* Modal variant dotted separator styling like order modal */
 .material-purchase-details-view.in-modal .detail-item { position: static; align-items: center; }
 .material-purchase-details-view.in-modal .detail-item::after {
   content: '';
@@ -313,20 +318,20 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
 }
 
 
+/* Full width note style */
 .detail-item.full-width {
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
   margin-bottom: 10px;
+  white-space: normal;
 }
-
 
 .detail-item.full-width .detail-label {
   width: auto;
   margin-right: 0;
   margin-bottom: 8px;
 }
-
 
 .detail-item.full-width .detail-value.note-value-span {
   display: block;
@@ -340,6 +345,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   color: #495057;
   box-sizing: border-box;
   overflow-x: auto;
+  text-align: left;
 }
 
 
@@ -576,20 +582,9 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
     flex-direction: column;
     align-items: flex-start;
     margin-bottom: 8px;
-    width: 100%;
   }
-
-
-  .detail-label {
-    width: auto;
-    margin-right: 0;
-    margin-bottom: 4px;
-  }
-
-
-  .detail-value {
-    width: 100%;
-  }
+  .detail-label { width: auto; margin-right: 0; margin-bottom: 4px; }
+  .detail-value { width: 100%; text-align: left; }
 
 
   .detail-item.full-width {
@@ -600,10 +595,7 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   }
 
 
-  .detail-item.full-width .detail-value.note-value-span {
-    padding: 8px;
-    font-size: 0.9rem;
-  }
+  .detail-item.full-width .detail-value.note-value-span { padding: 8px; font-size: 0.9rem; }
 
 
 

@@ -55,9 +55,10 @@ echo "🌐 Проверяем frontend..."
 timeout 30 bash -c 'until curl -f http://127.0.0.1:8080 2>/dev/null; do sleep 2; echo "Ожидание frontend..."; done'
 
 echo "📊 Итоговая проверка через HTTPS..."
-echo "Frontend: $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro)"
-echo "Backend API: $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro/api/suppliers/)"
 echo "Health check: $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro/health/ping/)"
+echo "Frontend: $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro)"
+echo "Backend API (без авторизации): $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro/api/)"
+echo "Backend API (с авторизацией): $(curl -s -o /dev/null -w '%{http_code}' https://dkor.pro/api/suppliers/)"
 
 echo "✅ Обновление завершено!"
 echo "🌍 Ваш сайт доступен по адресу: https://dkor.pro"

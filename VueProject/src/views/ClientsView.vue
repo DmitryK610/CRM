@@ -343,7 +343,7 @@ td.actions-cell {
 .action-links-container {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 4px; /* reduced spacing */
   flex-wrap: wrap;
 }
 
@@ -383,7 +383,7 @@ td.actions-cell {
 
 @media (max-width: 768px) {
   .client-list-view {
-    padding: 0 12px;
+    padding: 0 15px; /* unified padding */
   }
 
   .header-actions h1 {
@@ -416,16 +416,17 @@ td.actions-cell {
 
   .action-links-container {
     flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 6px;
+    flex-wrap: nowrap; /* single row */
+    gap: 4px; /* tighter */
+    justify-content: flex-start;
   }
 
   .actions-cell .btn {
     width: 32px;
     height: 32px;
     padding: 0;
-    font-size: 0;
-    min-height: auto;
+    font-size: 0; /* hide text */
+    min-height: 32px;
     border-radius: 4px;
   }
 

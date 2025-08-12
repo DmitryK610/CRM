@@ -354,7 +354,7 @@ td :is(.btn, .btn-sm, .btn-primary, .btn-secondary, .btn-outline-primary, .btn-i
 
 @media (max-width: 768px) {
   .client-list-view {
-    padding: 0 12px;
+  padding: 0 15px; /* unify horizontal padding */
   }
 
   .header-actions h1 {

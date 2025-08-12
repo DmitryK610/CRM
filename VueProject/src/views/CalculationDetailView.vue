@@ -1011,7 +1011,8 @@ onMounted(async () => {
   }
 
   .detail-line span {
-    width: 100%;
+  width: 100%;
+  text-align: left; /* unify mobile text alignment */
   }
 
   .action-buttons {

@@ -666,7 +666,8 @@ const getStatusClass = (status: OrderStatus | null | undefined): string => {
   }
 
   .detail-line span {
-  width: 100%;
+    width: 100%;
+    text-align: left; /* unify mobile text alignment */
   }
 
   .note-value-span {
