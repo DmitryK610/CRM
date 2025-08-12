@@ -15,7 +15,7 @@ from django.contrib.contenttypes.models import ContentType # Для GenericForei
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 from rest_framework.permissions import IsAuthenticated
-from .permissions import PriceListPermission
+
 from decimal import Decimal, InvalidOperation
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
