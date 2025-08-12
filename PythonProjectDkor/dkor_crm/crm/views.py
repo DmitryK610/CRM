@@ -4,6 +4,7 @@ from rest_framework.pagination import PageNumberPagination
 from .service import CalculationService
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from rest_framework.permissions import AllowAny
 
 User = get_user_model()
 from django.utils import timezone
@@ -88,6 +89,9 @@ class PriceListViewSet(ViewSet):
 
 
 class CustomObtainAuthToken(ObtainAuthToken):
+    # Разрешаем всем (иначе 403 при отсутствии токена), отключаем проверки аутентификации (и CSRF)
+    permission_classes = [AllowAny]
+    authentication_classes = []
     """
     Представление для получения токена авторизации с добавлением записи в HistoryItem
     и возвратом данных UserProfile.
@@ -147,7 +151,7 @@ class CustomObtainAuthToken(ObtainAuthToken):
 # --- ViewSets ---
 
 class SupplierViewSet(viewsets.ModelViewSet):
-    queryset = Supplier.objects.all()
+    queryset = Supplier.objects.all().order_by('id')
     serializer_class = SupplierSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['company_name', 'contact_person', 'email', 'phone']
@@ -179,7 +183,7 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
 
 class MaterialViewSet(viewsets.ModelViewSet):
-    queryset = Material.objects.select_related('supplier').all()
+    queryset = Material.objects.select_related('supplier').all().order_by('id')
     serializer_class = MaterialSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['material_name', 'color_code', 'note', 'supplier__company_name']
@@ -200,7 +204,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
 
 class ClientViewSet(viewsets.ModelViewSet):
-    queryset = Client.objects.all()
+    queryset = Client.objects.all().order_by('id')
     serializer_class = ClientSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['full_name', 'contact_phone', 'email', 'address', 'note']
