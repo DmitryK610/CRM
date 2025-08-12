@@ -55,7 +55,7 @@ class PriceListViewSet(ViewSet):
     - PUT /api/pricelist/: Updates the price list.
     - POST /api/pricelist/reset/: Resets the price list to default values.
     """
-    permission_classes = [IsAuthenticated, PriceListPermission]
+    permission_classes = [IsAuthenticated]
 
     def list(self, request):
         """Handles GET requests to fetch the price list."""
