@@ -1,6 +1,6 @@
 <template>
   <div class="material-purchase-details-view" :class="{ 'in-modal': !!props.isModal }">
-    <h1 class="page-title">Детали закупки материала</h1>
+    <h1 v-if="!props.isModal" class="page-title">Детали закупки материала</h1>
 
     <div v-if="purchaseStore.isFetchingDetails" class="status-message loading-message">
       <div class="loader"></div> Загрузка деталей закупки...
@@ -13,7 +13,7 @@
     <div v-else-if="!purchaseDetails" class="status-message no-results-message">
       Детали закупки не найдены.
     </div>
-    <div v-else class="details-container card">
+    <div v-else class="details-container" :class="{ card: !props.isModal, 'flat-modal': props.isModal }">
       <div class="details-section">
         <h2>Основная информация о закупке</h2>
         <div class="details-grid">
@@ -73,7 +73,7 @@
       </div>
 
 
-      <div class="actions-panel">
+  <div class="actions-panel" v-if="!props.isModal">
         <router-link :to="{ name: 'MaterialsView' }" class="btn secondary-button" v-if="!props.isModal">
           К списку закупок
         </router-link>
@@ -228,6 +228,29 @@ const formatDate = (dateInput: string | Date | null | undefined): string => {
   max-width: 100%;
   border: none;
   box-shadow: none;
+}
+
+/* Убираем карточную обертку и лишние декоративные элементы внутри модалки */
+.material-purchase-details-view.in-modal .details-container {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.material-purchase-details-view.in-modal .details-section {
+  margin: 0 0 16px 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.material-purchase-details-view.in-modal .details-section h2 {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+  border: none;
+  padding: 0;
 }
 
 

@@ -1,13 +1,20 @@
 
-
-
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/' // Для продакшена и dev
-
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api')
+  .replace(/\/+$/,'') // убираем завершающие слеши
 
 const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken') // Убедитесь, что ключ 'authToken' правильный
+  return localStorage.getItem('authToken')
 }
 
+function buildUrl(endpoint: string): string {
+  // убираем начальные слеши
+  let ep = endpoint.replace(/^\/+/, '')
+  // если база заканчивается на /api и endpoint начинается с api/ -> вырезаем повтор
+  if (API_BASE_URL.endsWith('/api') && ep.startsWith('api/')) {
+    ep = ep.substring(4)
+  }
+  return `${API_BASE_URL}/${ep}`
+}
 
 async function handleApiResponse<T>(response: Response): Promise<T | null> {
   if (!response.ok) {
@@ -48,35 +55,29 @@ async function handleApiResponse<T>(response: Response): Promise<T | null> {
 
 async function request<T>(endpoint: string, options: RequestInit): Promise<T | null> {
   const token = getAuthToken()
-
-
-
   const headers = new Headers(options.headers)
-
 
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
+  // Не добавляем токен на эндпоинт логина чтобы избежать 403 при истёкшем старом токене
+  const normalizedEp = endpoint.replace(/^\/+/, '')
+  const isLogin = /(^|\b)login\/?$/i.test(normalizedEp) || normalizedEp.includes('login/')
 
-  if (token) {
-
-    headers.set('Authorization', `Bearer ${token}`) // Или другой формат, например 'Token ваш_токен'
+  if (token && !isLogin) {
+    headers.set('Authorization', `Bearer ${token}`)
   }
-
 
   const fetchOptions: RequestInit = {
-    ...options, // Передаем остальные опции (method, body и т.д.)
-    headers: headers, // Присваиваем объект Headers
+    ...options,
+    headers
   }
 
+  if (fetchOptions.method === 'GET' || fetchOptions.method === 'HEAD') delete fetchOptions.body
 
-  if (fetchOptions.method === 'GET' || fetchOptions.method === 'HEAD') {
-    delete fetchOptions.body
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions)
-
+  const url = buildUrl(endpoint)
+  const response = await fetch(url, fetchOptions)
   return handleApiResponse<T>(response)
 }
 

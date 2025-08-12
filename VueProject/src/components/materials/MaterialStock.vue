@@ -339,10 +339,21 @@ onMounted(async () => {
   if (!isEditing.value) {
     resetForm();
   }
+
+  // После загрузки материалов убеждаемся, что при наличии выбранного id select покажет правильный объект.
+  if (currentItem.value.material && typeof currentItem.value.material === 'number') {
+    const found = materialStore.materials.find(m => m.id === currentItem.value.material);
+    // Если vue-select не показывает (из-за reduce) - он работает с id, но слот selected-option уже обрабатывает.
+    // Дополнительно: если материал не найден (например, его ещё не успели загрузить), попробуем его догрузить.
+    if (!found) {
+      try { await materialStore.fetchMaterialById(currentItem.value.material); } catch (e) { /* ignore */ }
+    }
+  }
 });
 
 const handleMaterialChange = () => {
-
+  // Можно при изменении материала автоматически обновлять связанные поля (например, сбрасывать количество или стоимость)
+  // Пока оставляем как заглушку.
 };
 
 const handleStatusChange = () => {
