@@ -4,40 +4,43 @@ from rest_framework.pagination import PageNumberPagination
 from .service import CalculationService
 from rest_framework import status
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
 from django.utils import timezone
 # Импорты для авторизации и HistoryItem
-from rest_framework.authtoken.views import ObtainAuthToken # Импортируем базовый класс
-from rest_framework.authtoken.models import Token # Для работы с токенами
-from rest_framework.response import Response # Для формирования ответа
-from rest_framework import status # Для кодов статуса HTTP
-from django.contrib.contenttypes.models import ContentType # Для GenericForeignKey
+from rest_framework.authtoken.views import ObtainAuthToken  # Импортируем базовый класс
+from rest_framework.authtoken.models import Token  # Для работы с токенами
+from rest_framework.response import Response  # Для формирования ответа
+from rest_framework import status  # Для кодов статуса HTTP
+from django.contrib.contenttypes.models import ContentType  # Для GenericForeignKey
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
-from rest_framework.permissions import IsAuthenticated
-
 from decimal import Decimal, InvalidOperation
 from .models import (
     Supplier, Material, Client, Employee, Calculation,
-    Order, OrderItem, Payment, HistoryItem, UserProfile, # Убедитесь, что HistoryItem и UserProfile импортированы
-    Attachment, MaterialPurchase, PriceList, # Убедитесь, что эти модели импортированы
+    Order, OrderItem, Payment, HistoryItem, UserProfile,  # Убедитесь, что HistoryItem и UserProfile импортированы
+    Attachment, MaterialPurchase, PriceList,  # Убедитесь, что эти модели импортированы
 )
 
 from .serializers import (
     SupplierSerializer, MaterialSerializer, ClientSerializer, EmployeeSerializer,
     CalculationSerializer, OrderSerializer, OrderItemSerializer, PaymentSerializer,
     HistoryItemSerializer, UserProfileSerializer,
-    AttachmentSerializer, MaterialPurchaseSerializer, PriceListSerializer # Убедитесь, что все сериализаторы импортированы
+    AttachmentSerializer, MaterialPurchaseSerializer,
+    PriceListSerializer  # Убедитесь, что все сериализаторы импортированы
 )
+
 
 # --- Пагинация ---
 class OrderPagination(PageNumberPagination):
     page_size = 10
 
+
 class StandardPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
+
 
 # --- Вспомогательные функции ---
 def get_current_user(request):
@@ -48,6 +51,7 @@ def get_current_user(request):
         return request.user
     return None
 
+
 class PriceListViewSet(ViewSet):
     """
     API endpoint for managing the singleton PriceList.
@@ -55,7 +59,7 @@ class PriceListViewSet(ViewSet):
     - PUT /api/pricelist/: Updates the price list.
     - POST /api/pricelist/reset/: Resets the price list to default values.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # Add permissions like IsAdminUser in a real app
 
     def list(self, request):
         """Handles GET requests to fetch the price list."""
@@ -82,14 +86,16 @@ class PriceListViewSet(ViewSet):
         serializer = PriceListSerializer(new_price_list)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class CustomObtainAuthToken(ObtainAuthToken):
     """
     Представление для получения токена авторизации с добавлением записи в HistoryItem
     и возвратом данных UserProfile.
     """
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True) # Если валидация не пройдена, будет выброшено исключение
+        serializer.is_valid(raise_exception=True)  # Если валидация не пройдена, будет выброшено исключение
 
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
@@ -128,15 +134,15 @@ class CustomObtainAuthToken(ObtainAuthToken):
         except Exception:
             # Если запись истории не удалась, просто логируем ошибку (или игнорируем),
             # но не прерываем процесс авторизации.
-            pass # Можно добавить logging.error() здесь, если нужен детальный лог ошибки
+            pass  # Можно добавить logging.error() здесь, если нужен детальный лог ошибки
 
         response_data = {
             'token': token.key,
             'user': user_profile_data,
-            'permissions': sorted(list(user.get_all_permissions())),
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
 
 # --- ViewSets ---
 
@@ -352,6 +358,7 @@ class CalculationViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Расчёт успешно удалён."}, status=status.HTTP_204_NO_CONTENT)
 
+
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
@@ -459,27 +466,28 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     """
     queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
+
     # Убираем аутентификацию для упрощения работы
     # permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         """
         Фильтруем вложения по заказам или расчетам.
         """
         queryset = super().get_queryset()
-        
+
         # Фильтр по заказу
         order_id = self.request.query_params.get('order')
         if order_id:
             queryset = queryset.filter(order_id=order_id)
-        
+
         # Фильтр по расчету
         calculation_id = self.request.query_params.get('calculation')
         if calculation_id:
             queryset = queryset.filter(calculation_id=calculation_id)
-            
+
         return queryset.order_by('-uploaded_at')
-    
+
     def perform_create(self, serializer):
         """
         Сохраняем вложение с дополнительной логикой.
@@ -487,7 +495,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         # Можно добавить логику для добавления пользователя, если нужно
         # serializer.save(uploaded_by=self.request.user)
         serializer.save()
-    
+
     def create(self, request, *args, **kwargs):
         """
         Переопределяем создание для лучшей обработки ошибок.
@@ -505,7 +513,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     def destroy(self, request, *args, **kwargs):
         """
         Переопределяем удаление для лучшей обработки ошибок.
