@@ -143,7 +143,7 @@
                 <div class="action-links-container" id = "button_about">
                   <button @click="openPurchaseDetailsModal(proc.id)" class="btn btn-primary" title="Подробно о закупке" :disabled="purchaseStore.isDeleting">
                     <span class="material-symbols-outlined">visibility</span>
-                    <span class="btn-text">Подробнее</span>
+                    <span class="btn-text-about">Подробнее</span>
                   </button>
                   <button @click="openEditPurchaseModal(proc.id)" class="btn btn-warning" title="Редактировать закупку" :disabled="purchaseStore.isDeleting">
                     <span class="material-symbols-outlined">edit</span>
@@ -355,11 +355,11 @@ defineExpose({ refreshPurchaseList });
 </script>
 
 <style scoped>
-#button_about {
+.btn-text-about {
   padding-left: 10px;
   padding-right: 10px;
 }
-
+.
 .material-list-view {
  padding: 20px 24px;
   max-width: var(--max-container-width);
