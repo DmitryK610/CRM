@@ -1035,9 +1035,13 @@ th {
     padding: 10px;
   }
   .action-links-container { flex-wrap: nowrap; gap: 4px; justify-content: flex-start; }
-  .actions-cell .btn { width: 30px; height: 30px; padding: 0; font-size: 0; min-height: 30px; }
-  .actions-cell .btn .btn-text { display: none; }
-  .actions-cell .btn .material-symbols-outlined { font-size: 20px; line-height: 1; }
+  .actions-cell .btn { min-width: 130px; }
+
+  @media (max-width: 768px) {
+    .actions-cell .btn { width: 30px; height: 30px; padding: 0; font-size: 0; min-height: 30px; min-width: 0; }
+    .actions-cell .btn .btn-text { display: none; }
+    .actions-cell .btn .material-symbols-outlined { font-size: 20px; line-height: 1; }
+  }
 
   h1 {
     font-size: 1.6rem;
