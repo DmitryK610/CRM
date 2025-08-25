@@ -355,11 +355,11 @@ defineExpose({ refreshPurchaseList });
 </script>
 
 <style scoped>
-.btn-text-about {
-  padding-left: 10px;
-  padding-right: 10px;
-}
-.
+  .btn-text-about {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
 .material-list-view {
  padding: 20px 24px;
   max-width: var(--max-container-width);
