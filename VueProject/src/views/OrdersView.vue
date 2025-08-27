@@ -6,38 +6,19 @@
         <span class="material-symbols-outlined">add</span>
       </button>
     </div>
-
-    <div class="filters-row order-filters-row">
+    <div class="order-filters-row">
+      <select v-model="filters.status" class="search-input order-status-select">
+        <option value="">Все статусы</option>
+        <option v-for="(label, key) in orderStatusOptions" :key="key" :value="label">{{ label }}</option>
+      </select>
       <input
         type="text"
         v-model="filters.query"
         placeholder="Поиск по клиенту, материалу или сумме..."
         @input="applyFiltersDebounced"
-        class="search-input order-search-input"
+        class="search-input full-width-search order-search-input"
       />
-      <select v-model="filters.status" class="search-input order-search-input order-status-select">
-        <option value="">Все статусы</option>
-        <option v-for="(label, key) in orderStatusOptions" :key="key" :value="label">{{ label }}</option>
-      </select>
     </div>
-<style scoped>
-.order-filters-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.order-search-input {
-  height: 32px;
-  font-size: 14px;
-  padding: 4px 10px;
-  border-radius: 4px;
-}
-.order-status-select {
-  max-width: 180px;
-}
-</style>
 
     <div v-if="error || attachmentStore.attachmentError" class="status-message error-message">
       ⚠️ Ошибка загрузки данных: {{ error || attachmentStore.attachmentError }}
@@ -261,6 +242,9 @@ const ordersWithDetails = computed(() => {
 
 const sortedAndFilteredOrders = computed(() => {
   let orders = [...ordersWithDetails.value] as any[];
+  if (filters.value.status) {
+    orders = orders.filter(order => order.status === filters.value.status);
+  }
   if (filters.value.query) {
     const query = filters.value.query.toLowerCase().trim();
     orders = orders.filter(order =>
@@ -270,9 +254,6 @@ const sortedAndFilteredOrders = computed(() => {
        String(order.id).includes(query) ||
        (order.status && String(order.status).toLowerCase().includes(query)))
     );
-  }
-  if (filters.value.status) {
-    orders = orders.filter(order => order.status === filters.value.status);
   }
   if (sortKey.value) {
     orders.sort((a, b) => {
@@ -289,6 +270,25 @@ const sortedAndFilteredOrders = computed(() => {
   }
   return orders;
 });
+<style scoped>
+.order-filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.order-search-input,
+.order-status-select {
+  height: 28px;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.order-status-select {
+  max-width: 160px;
+}
+</style>
 
 const totalPages = computed(() => {
   return Math.ceil(sortedAndFilteredOrders.value.length / pageSize.value);
