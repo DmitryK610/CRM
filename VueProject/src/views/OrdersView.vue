@@ -463,13 +463,15 @@ watch(sortedAndFilteredOrders, () => {
 }
 .order-search-input,
 .order-status-select {
-  height: 28px;
-  font-size: 13px;
-  padding: 2px 8px;
+  height: 32px;
+  font-size: 14px;
+  padding: 4px 10px;
   border-radius: 4px;
+  box-sizing: border-box;
 }
 .order-status-select {
-  max-width: 160px;
+  max-width: 180px;
+  min-width: 120px;
 }
 .order-list-container {
   padding: 20px 24px;
