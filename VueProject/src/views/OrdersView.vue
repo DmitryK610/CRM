@@ -469,6 +469,9 @@ watch(sortedAndFilteredOrders, () => {
   border-radius: 4px;
   box-sizing: border-box;
 }
+.order-search-input.full-width-search {
+  margin-bottom: 0 !important;
+}
 .order-status-select {
   max-width: 180px;
   min-width: 120px;
