@@ -7,19 +7,37 @@
       </button>
     </div>
 
-    <div class="filters-row">
+    <div class="filters-row order-filters-row">
       <input
         type="text"
         v-model="filters.query"
         placeholder="Поиск по клиенту, материалу или сумме..."
         @input="applyFiltersDebounced"
-        class="search-input full-width-search"
+        class="search-input order-search-input"
       />
-      <select v-model="filters.status" class="search-input" style="max-width:220px; margin-left: 12px;">
+      <select v-model="filters.status" class="search-input order-search-input order-status-select">
         <option value="">Все статусы</option>
         <option v-for="(label, key) in orderStatusOptions" :key="key" :value="label">{{ label }}</option>
       </select>
     </div>
+<style scoped>
+.order-filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.order-search-input {
+  height: 32px;
+  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.order-status-select {
+  max-width: 180px;
+}
+</style>
 
     <div v-if="error || attachmentStore.attachmentError" class="status-message error-message">
       ⚠️ Ошибка загрузки данных: {{ error || attachmentStore.attachmentError }}
