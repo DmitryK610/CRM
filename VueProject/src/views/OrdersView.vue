@@ -6,13 +6,20 @@
         <span class="material-symbols-outlined">add</span>
       </button>
     </div>
-    <input
-      type="text"
-      v-model="filters.query"
-      placeholder="Поиск по клиенту, материалу или сумме..."
-      @input="applyFiltersDebounced"
-      class="search-input full-width-search"
-    />
+
+    <div class="filters-row">
+      <input
+        type="text"
+        v-model="filters.query"
+        placeholder="Поиск по клиенту, материалу или сумме..."
+        @input="applyFiltersDebounced"
+        class="search-input full-width-search"
+      />
+      <select v-model="filters.status" class="search-input" style="max-width:220px; margin-left: 12px;">
+        <option value="">Все статусы</option>
+        <option v-for="(label, key) in orderStatusOptions" :key="key" :value="label">{{ label }}</option>
+      </select>
+    </div>
 
     <div v-if="error || attachmentStore.attachmentError" class="status-message error-message">
       ⚠️ Ошибка загрузки данных: {{ error || attachmentStore.attachmentError }}
@@ -164,6 +171,7 @@
 </template>
 
 <script setup lang="ts">
+import { OrderStatus } from '@/types/order';
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useOrderStore } from '@/stores/orderStore';
 import { useClientStore } from '@/stores/clientStore';
@@ -192,7 +200,20 @@ const router = useRouter();
 
 const filters = ref({
   query: '',
+  status: '',
 });
+
+const orderStatusOptions = {
+  [OrderStatus.NEW]: 'Новый',
+  [OrderStatus.CALCULATION_CONFIRMED]: 'Расчет подтвержден',
+  [OrderStatus.AWAITING_ADVANCE]: 'Ожидает аванса',
+  [OrderStatus.IN_PRODUCTION]: 'В производстве',
+  [OrderStatus.READY_FOR_INSTALLATION]: 'Готов к установке',
+  [OrderStatus.AWAITING_INSTALLATION]: 'Ожидает установки',
+  [OrderStatus.INSTALLATION]: 'Установка',
+  [OrderStatus.COMPLETED]: 'Выполнен',
+  [OrderStatus.CANCELLED]: 'Отменен',
+};
 const currentPage = ref(1);
 const pageSize = ref(10);
 const sortKey = ref('');
@@ -232,7 +253,9 @@ const sortedAndFilteredOrders = computed(() => {
        (order.status && String(order.status).toLowerCase().includes(query)))
     );
   }
-
+  if (filters.value.status) {
+    orders = orders.filter(order => order.status === filters.value.status);
+  }
   if (sortKey.value) {
     orders.sort((a, b) => {
       const aValue = a[sortKey.value] ?? '';
@@ -246,7 +269,6 @@ const sortedAndFilteredOrders = computed(() => {
       return 0;
     });
   }
-
   return orders;
 });
 

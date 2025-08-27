@@ -51,11 +51,6 @@
                         <span class="material-symbols-outlined">visibility</span>
                         <span class="btn-text">Подробнее</span>
                       </button>
-                      <button v-if="order.status === OrderStatus.IN_PRODUCTION" @click="completeOrder(order.id!)"
-                        class="btn btn-success" :disabled="orderStore.isLoading" title="Завершить">
-                        <span class="material-symbols-outlined">check_circle</span>
-                        <span class="btn-text">Завершить</span>
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -157,17 +152,6 @@ const reloadData = async () => {
   });
 };
 
-const completeOrder = async (orderId: number) => {
-  if (orderId === null || orderId === undefined) return;
-  try {
-    const updatedOrder = await orderStore.updateOrder(orderId, { status: OrderStatus.COMPLETED });
-    if (updatedOrder) {
-
-    }
-  } catch (error) {
-    console.error(`Ошибка при завершении заказа с ID ${orderId}:`, error);
-  }
-};
 
 onMounted(async () => {
   if (authStore.isAuthenticated) {
