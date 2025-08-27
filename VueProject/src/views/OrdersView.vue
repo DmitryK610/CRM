@@ -270,25 +270,7 @@ const sortedAndFilteredOrders = computed(() => {
   }
   return orders;
 });
-<style scoped>
-.order-filters-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.order-search-input,
-.order-status-select {
-  height: 28px;
-  font-size: 13px;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-.order-status-select {
-  max-width: 160px;
-}
-</style>
+
 
 const totalPages = computed(() => {
   return Math.ceil(sortedAndFilteredOrders.value.length / pageSize.value);
@@ -472,6 +454,23 @@ watch(sortedAndFilteredOrders, () => {
 </script>
 
 <style scoped>
+.order-filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.order-search-input,
+.order-status-select {
+  height: 28px;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.order-status-select {
+  max-width: 160px;
+}
 .order-list-container {
   padding: 20px 24px;
   max-width: var(--max-container-width);
