@@ -459,7 +459,7 @@ watch(sortedAndFilteredOrders, () => {
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0px;
 }
 .order-search-input,
 .order-status-select {
