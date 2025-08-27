@@ -470,7 +470,10 @@ watch(sortedAndFilteredOrders, () => {
   box-sizing: border-box;
   margin-bottom: 20px;
 }
-
+.order-status-select option[value=""] {
+  color: #aaa;
+  font-weight: normal;
+}
 .order-status-select {
   max-width: 180px;
   min-width: 120px;
